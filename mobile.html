@@ -878,22 +878,22 @@ document.addEventListener('touchstart', unlockAudioContext, { once: true });
     CONTACTS & LIST
     ========================================= */
 function loadContacts() {
-    // 1. Matikan listener lama
+    // 1. Matikan listener lama saat fungsi di-load ulang
     if (contactsListener) {
         db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
     }
 
     contactsListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
         
-        // Ambil data Pinned sekali saja
+        // Ambil data Pinned sekali saja untuk referensi
         const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
         const pinnedIds = pinnedSnap.val() || {};
         const list = document.getElementById("users");
         
-        // Array ID yang ada sekarang
+        // Array untuk menyimpan ID chat yang ada di snapshot saat ini
         let currentSnapshotIds = [];
         
-        // Loop data chat
+        // Loop data chat dari Firebase
         snap.forEach(c => { 
             const id = c.key;
             currentSnapshotIds.push(id);
@@ -901,24 +901,27 @@ function loadContacts() {
             const info = c.val();
             if(!info) return;
 
-            // Cek elemen HTML
+            // Cek apakah elemen HTML sudah ada di layar
             const el = document.getElementById(`contact-${id}`);
             
-            // Persiapan User/Group
+            // Persiapan data User/Group
             const isGrp = id.startsWith("GROUP_");
             const refPath = isGrp ? "groups/" + id : "users/" + id;
             
-            // Ambil data user
+            // Ambil data User/Grup (Agar nama/foto terupdate)
             db.ref(refPath).once("value", uSnap => {
                 const u = uSnap.val();
-                const isPinned = !!pinnedIds[id]; // <--- SUDAH BENAR (TIDAK ADA ]] BERLEBIH)
+                const isPinned = !!pinnedIds[id];
                 const chatId = isGrp ? id : [currentUser, id].sort().join("_");
 
                 if (el) {
-                    // --- UPDATE (Sudah ada) ---
+                    // --- SCENARIO A: UPDATE (Chat sudah ada di layar) ---
+                    
+                    // Update Class jika status pinned berubah
                     if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
                     if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
 
+                    // Update Text
                     const nameEl = el.querySelector("b");
                     const msgEl = el.querySelector("span");
                     
@@ -926,7 +929,7 @@ function loadContacts() {
                     if(msgEl) msgEl.innerText = info.lastMsg || '...';
 
                 } else {
-                    // --- CREATE (Belum ada) ---
+                    // --- SCENARIO B: CREATE (Chat baru belum ada di layar) ---
                     
                     let div = document.createElement("div");
                     div.id = `contact-${id}`; 
@@ -945,11 +948,13 @@ function loadContacts() {
                     setupHoldListener(div, id);
                     list.appendChild(div);
 
+                    // --- PENTING: BUAT LISTENER BARU HANYA UNTUK CHAT BARU INI ---
                     if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
 
-                    // 1. Listener Badge
+                    // 1. Listener Badge (Unread Count)
                     if (!chatListeners[id].badge) {
                         const unreadRef = db.ref("chats/" + chatId).limitToLast(30).orderByChild("seen").equalTo(false);
+                        
                         const badgeHandler = (unreadSnap) => {
                             let count = 0;
                             unreadSnap.forEach(m => { 
@@ -971,46 +976,49 @@ function loadContacts() {
                                 }
                             }
                         };
+                        
                         unreadRef.on("value", badgeHandler);
                         chatListeners[id].badge = unreadRef; 
                     }
 
-                    // 2. Listener Notifikasi
+                    // --- 2. LISTENER NOTIFIKASI (FIXED: SUARA & POP-UP) ---
                     if (!chatListeners[id].notif) {
                         const notifRef = db.ref("chats/" + chatId).limitToLast(1);
+                        
                         const notifHandler = (msgSnap) => {
                             msgSnap.forEach(s => {
                                 const m = s.val();
                                 
-                                console.log(`[DEBUG] Pesan Masuk: From=${m.from} | MyID=${currentUser} | CurrentChat=${currentChatId}`);
-
+                                // LOGIKA BARU:
+                                // 1. Bukan pesan saya sendiri
+                                // 2. Chat ini SEDANG TIDAK DIBUKA
+                                // 3. Pesan tidak dihapus
                                 if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
                                     
-                                    let notifBody = "";
-                                    let soundType = 'message';
+                                    // 1. MAINKAN SUARA (Selalu mainkan jika chat tidak dibuka)
+                                    playNotificationSound('message');
 
-                                    if (m.text.startsWith("CALL_JITSI:")) {
-                                        soundType = 'ringtone'; 
-                                        notifBody = "📞 Panggilan Masuk...";
-                                    } else if (m.text.startsWith("IMG:")) {
-                                        notifBody = "📷 Mengirim Gambar...";
-                                    } else if (m.text.startsWith("TYPE:VN:")) {
-                                        notifBody = "🎤 Mengirim Voice Note...";
-                                    } else {
-                                        try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
-                                    }
-
-                                    playNotificationSound(soundType);
-
+                                    // 2. TAMPILKAN POP-UP (Kecuali user sedang mengetik)
                                     const isUserTyping = (document.activeElement.id === 'text');
                                     
                                     if (!isUserTyping) {
+                                        let notifBody = "";
+                                        if (m.text.startsWith("IMG:")) notifBody = "📷 Mengirim Gambar...";
+                                        else if (m.text.startsWith("TYPE:VN:")) notifBody = "🎤 Mengirim Voice Note...";
+                                        else if (m.text.startsWith("CALL_JITSI:")) notifBody = "📞 Panggilan Masuk...";
+                                        else {
+                                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                                        }
+
                                         const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                        
+                                        // Panggil fungsi pop-up browser + toast internal
                                         showSystemNotification(senderName, notifBody, id);
                                     }
                                 }
                             });
                         };
+                        
                         notifRef.on("child_added", notifHandler);
                         chatListeners[id].notif = notifRef;
                     }
@@ -1018,7 +1026,7 @@ function loadContacts() {
             });
         });
 
-        // Hapus chat yang tidak ada di snapshot
+        // --- SCENARIO C: REMOVE (Chat dihapus dari database) ---
         const existingDivs = document.querySelectorAll('.user');
         existingDivs.forEach(div => {
             const divId = div.id.replace('contact-', '');
@@ -1032,7 +1040,7 @@ function loadContacts() {
             }
         });
 
-        // Sorting
+        // --- SORTING ---
         let items = [];
         snap.forEach(c => { 
             items.push({ id: c.key, info: c.val(), isPinned: !!pinnedIds[c.key] });
@@ -2258,6 +2266,7 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
 
 
