@@ -670,23 +670,31 @@ window.addEventListener('blur', () => {
     isWindowFocused = false;
 });
 
-function initApp() {
+async function initApp() {
     if(!currentUser) { window.location.href="index.html"; return; }
     
+    console.log("🚀 [INIT] Starting App...");
+    
+    // --- 1. REQUEST NOTIFICATION PERMISSION FIRST ---
+    if (Notification.permission === "default") {
+        console.log("📢 [INIT] Requesting notification permission...");
+        const permission = await Notification.requestPermission();
+        console.log("📢 [INIT] Permission result:", permission);
+    } else {
+        console.log("📢 [INIT] Current permission:", Notification.permission);
+    }
+    
+    // --- 2. UNLOCK AUDIO IMMEDIATELY ---
+    unlockAudioContext();
+    
+    // --- 3. SERVICE WORKER ---
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .then(reg => console.log('Service Worker terdaftar!', reg))
             .catch(err => console.error('Gagal registrasi SW:', err));
     }
-
-    if (Notification.permission !== "granted") {
-        Notification.requestPermission();
-    }
-
-    // --- 1. SETUP NOTIFIKASI (PENTING!) ---
-    setupGlobalNotificationListener();
     
-    // --- 2. SETUP USER ---
+    // --- 4. SETUP USER ---
     db.ref("users/" + currentUser).on("value", s => {
         const d = s.val();
         if(d) {
@@ -699,12 +707,13 @@ function initApp() {
     db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
     db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
 
-    // --- 3. LOAD CONTACTS & LAINNYA ---
+    // --- 5. LOAD CONTACTS & SETUP ---
     loadContacts();
     setupEmoji();
     setupTypingListener();
+    
+    console.log("✅ [INIT] App initialization complete");
 }
-
 /* =========================================
     FUNGSI GROUP (SUDAH DIPERBAIKI - TIDAK GANDA)
     ========================================= */
@@ -2264,6 +2273,7 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
 
 
