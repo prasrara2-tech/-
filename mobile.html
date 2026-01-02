@@ -703,20 +703,6 @@ function initApp() {
     setupTypingListener();
 }
 
-// Fungsi untuk mematikan semua listener chat lama (Anti-Zombie)
-function clearAllChatListeners() {
-    for (const chatId in chatListeners) {
-        const listeners = chatListeners[chatId];
-        if (listeners.unread) listeners.unread.off();
-        if (listeners.notif) listeners.notif.off();
-        if (listeners.lastMsg) listeners.lastMsg.off(); // Opsional: jika ada listener pesan terakhir
-    }
-    // Kosongkan gudang
-    for (const key in chatListeners) {
-        delete chatListeners[key];
-    }
-    console.log(">>> SEMUA LISTENER CHAT LAMA SUDAH DIMATIKAN");
-}
 /* =========================================
     FUNGSI GROUP (SUDAH DIPERBAIKI - TIDAK GANDA)
     ========================================= */
@@ -875,152 +861,190 @@ function updatePartnerOnlineStatus() {
     CONTACTS & LIST
     ========================================= */
 function loadContacts() {
-    // 1. BERSIHKAN LISTENER LAMA (PENTING!)
-    // Kita memanggil fungsi clean up di sini sebelum memuat ulang list
+    // 1. Matikan listener lama saat fungsi di-load ulang
     if (contactsListener) {
         db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
     }
-    // Matikan juga listener detail chat yang mungkin masih nempel
-    clearAllChatListeners();
 
-    // 2. BUAT LISTENER PARENT (DAFTAR CHAT)
-    contactsListener = db.ref(`user_chats/${currentUser}`).on("value", (snap) => {
+    // KITA TIDAK AKAN MEMANGGIL clearAllChatListeners() DISINI
+    // Karena kita ingin mempertahankan koneksi yang sudah ada agar tidak lag.
+
+    contactsListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
         
-        db.ref(`user_settings/${currentUser}/pinned_chats`).once("value", pinnedSnap => {
-            const pinnedIds = pinnedSnap.val() || {};
-            const list = document.getElementById("users");
+        // Ambil data Pinned sekali saja untuk referensi
+        const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
+        const pinnedIds = pinnedSnap.val() || {};
+        const list = document.getElementById("users");
+        
+        // Array untuk menyimpan ID chat yang ada di snapshot saat ini
+        let currentSnapshotIds = [];
+        
+        // Loop data chat dari Firebase
+        snap.forEach(c => { 
+            const id = c.key;
+            currentSnapshotIds.push(id);
             
-            list.innerHTML = ""; // Bersihkan tampilan HTML
+            const info = c.val();
+            if(!info) return;
+
+            // Cek apakah elemen HTML sudah ada di layar
+            const el = document.getElementById(`contact-${id}`);
             
-            let items = [];
+            // Persiapan data User/Group
+            const isGrp = id.startsWith("GROUP_");
+            const refPath = isGrp ? "groups/" + id : "users/" + id;
             
-            snap.forEach(c => { 
-                const info = c.val();
-                if(!info) return;
+            // Ambil data User/Grup (Agar nama/foto terupdate)
+            db.ref(refPath).once("value", uSnap => {
+                const u = uSnap.val();
+                const isPinned = !!pinnedIds[id];
+                const chatId = isGrp ? id : [currentUser, id].sort().join("_");
 
-                items.push({ 
-                    id: c.key, 
-                    info: info, 
-                    isPinned: !!pinnedIds[c.key] 
-                }); 
-            });
-
-            items.sort((a, b) => {
-                if (a.isPinned && !b.isPinned) return -1;
-                if (!a.isPinned && b.isPinned) return 1;
-                return b.info.time - a.info.time;
-            });
-
-            items.forEach(item => {
-                const isGrp = item.id.startsWith("GROUP_");
-                const refPath = isGrp ? "groups/" + item.id : "users/" + item.id;
-                const chatId = isGrp ? item.id : [currentUser, item.id].sort().join("_");
-                
-                db.ref(refPath).once("value", (uSnap) => {
-                    const u = uSnap.val();
-                    const existingEl = document.getElementById(`contact-${item.id}`);
-                    if(existingEl) return;
-
-                    // --- 3. ATTACH LISTENER BARU (DIBERSIHKAN SETIAP RELOAD) ---
+                if (el) {
+                    // --- SCENARIO A: UPDATE (Chat sudah ada di layar) ---
+                    // JANGAN HAPUS ELEMENT! JANGAN BUAT LISTENER BARU!
+                    // Cukup update teks nama dan pesan terakhir.
                     
-                    // A. LISTENER UNREAD (BADGE)
-                    // KITA TAMBAHKAN limitToLast(20) AGAR TIDAK LEMOT MEMBACA SEJARAH PANJANG
-                    const unreadRef = db.ref("chats/" + chatId)
-                        .limitToLast(20) 
-                        .orderByChild("seen")
-                        .equalTo(false);
+                    // Update Class jika status pinned berubah
+                    if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
+                    if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
 
-                    const unreadHandler = (unreadSnap) => {
-                        let count = 0;
-                        unreadSnap.forEach(m => { 
-                            if(m.val().from !== currentUser) count++; 
-                        });
-
-                        const currentEl = document.getElementById(`contact-${item.id}`);
-                        if(!currentEl) return;
-
-                        let badgeEl = currentEl.querySelector('.unread-badge');
-                        if(count > 0) {
-                            if(!badgeEl) {
-                                badgeEl = document.createElement("div");
-                                badgeEl.className = "unread-badge";
-                                currentEl.appendChild(badgeEl);
-                            }
-                            badgeEl.innerText = count;
-                        } else {
-                            if(badgeEl) badgeEl.remove();
-                        }
-                    };
+                    // Update Text
+                    const nameEl = el.querySelector("b");
+                    const msgEl = el.querySelector("span");
                     
-                    // Simpan listener ke gudang & aktifkan
-                    unreadRef.on("value", unreadHandler);
-                    if(!chatListeners[item.id]) chatListeners[item.id] = {};
-                    chatListeners[item.id].unread = unreadRef;
+                    if(nameEl) nameEl.innerText = `${u?.name || u?.username || id} ${isPinned ? '📌' : ''}`;
+                    if(msgEl) msgEl.innerText = info.lastMsg || '...';
 
-
-                    // B. LISTENER NOTIFIKASI (SUARA & POPUP)
-                    const notifRef = db.ref("chats/" + chatId).limitToLast(1);
+                } else {
+                    // --- SCENARIO B: CREATE (Chat baru belum ada di layar) ---
+                    // Buat elemen HTML baru
                     
-                    const notifHandler = (msgSnap) => {
-                        // Loop untuk ambil data pesan terakhir
-                        msgSnap.forEach(s => {
-                            const m = s.val();
-                            
-                            // LOGIKA: Hanya notif jika:
-                            // 1. Bukan dari saya
-                            // 2. Chat ini sedang TIDAK dibuka
-                            // 3. Pesan belum dihapus
-                            // 4. (Opsional) Aplikasi sedang di background atau minim (document.hidden)
-                            
-                            if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
-                                
-                                // Cek apakah aplikasi sedang terlihat oleh user
-                                if (!document.hidden && isWindowFocused) {
-                                    // Jika aplikasi sedang dibuka dan aktif, JANGAN tampilkan notifikasi browser yang mengganggu
-                                    // Cukup update badge (sudah dihandle oleh listener A)
-                                    console.log("Chat aktif, skip notifikasi browser");
-                                } else {
-                                    // Jika app di background / minimize / tab lain -> Tampilkan Notifikasi
-                                    playNotificationSound('message');
-
-                                    let notifBody = "";
-                                    if (m.text.startsWith("IMG:")) notifBody = "📷 Mengirim Gambar";
-                                    else if (m.text.startsWith("TYPE:VN:")) notifBody = "🎤 Mengirim Voice Note";
-                                    else if (m.text.startsWith("CALL_JITSI:")) notifBody = "📞 Panggilan Masuk...";
-                                    else {
-                                        try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan"; }
-                                    }
-
-                                    const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                                    showSystemNotification(senderName, notifBody, item.id);
-                                }
-                            }
-                        });
-                    };
-
-                    notifRef.on("child_added", notifHandler);
-                    chatListeners[item.id].notif = notifRef;
-
-                    // 4. RENDER ELEMEN HTML (Seperti biasa)
                     let div = document.createElement("div");
-                    div.id = `contact-${item.id}`; 
-                    div.className = `user ${item.isPinned ? 'pinned' : ''}`;
-                    const pinIcon = item.isPinned ? '<i class="fa fa-thumbtack" style="color:var(--accent); font-size:12px; margin-left:5px;"></i>' : '';
-
+                    div.id = `contact-${id}`; 
+                    div.className = `user ${isPinned ? 'pinned' : ''}`;
+                    
                     div.innerHTML = `
                         <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
-                             onclick="event.stopPropagation(); goToTargetProfile('${item.id}', ${isGrp})"
+                             onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
                              style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
-                        <div class="user-info" onclick="openChat('${item.id}', '${u?.photo || ''}', '${u?.name || u?.username || item.id}', ${isGrp})">
-                            <b>${u?.name || u?.username || item.id} ${pinIcon}</b>
-                            <span>${item.info.lastMsg || '...'}</span>
+                        <div class="user-info" onclick="openChat('${id}', '${u?.photo || ''}', '${u?.name || u?.username || id}', ${isGrp})">
+                            <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
+                            <span>${info.lastMsg || '...'}</span>
                         </div>
                     `;
 
-                    setupHoldListener(div, item.id);
+                    setupHoldListener(div, id);
                     list.appendChild(div);
-                });
+
+                    // --- PENTING: BUAT LISTENER BARU HANYA UNTUK CHAT BARU INI ---
+                    if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
+
+                    // 1. Listener Badge (Unread Count)
+                    if (!chatListeners[id].badge) {
+                        // LimitToLast(30) agar tidak berat baca history
+                        const unreadRef = db.ref("chats/" + chatId).limitToLast(30).orderByChild("seen").equalTo(false);
+                        
+                        const badgeHandler = (unreadSnap) => {
+                            let count = 0;
+                            unreadSnap.forEach(m => { 
+                                if(m.val().from !== currentUser) count++; 
+                            });
+                            
+                            const currentEl = document.getElementById(`contact-${id}`);
+                            if(currentEl) {
+                                let badgeEl = currentEl.querySelector('.unread-badge');
+                                if(count > 0) {
+                                    if(!badgeEl) {
+                                        badgeEl = document.createElement("div");
+                                        badgeEl.className = "unread-badge";
+                                        currentEl.appendChild(badgeEl);
+                                    }
+                                    badgeEl.innerText = count;
+                                } else {
+                                    if(badgeEl) badgeEl.remove();
+                                }
+                            }
+                        };
+                        
+                        unreadRef.on("value", badgeHandler);
+                        chatListeners[id].badge = unreadRef; // Simpan referensi listener
+                    }
+
+                    // 2. Listener Notifikasi (Sound & Popup)
+                    if (!chatListeners[id].notif) {
+                        const notifRef = db.ref("chats/" + chatId).limitToLast(1);
+                        
+                        const notifHandler = (msgSnap) => {
+                            msgSnap.forEach(s => {
+                                const m = s.val();
+                                // Hanya notif jika: Bukan dari saya, Chat tidak sedang dibuka, Pesan tidak dihapus
+                                if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
+                                    
+                                    if (!document.hidden && isWindowFocused) {
+                                        // App sedang aktif di layar -> Cukup bunyi kecil (opsional)
+                                        playNotificationSound('message');
+                                    } else {
+                                        // App Background / Tab Lain -> Bunyi + Notifikasi Browser
+                                        playNotificationSound('message');
+                                        
+                                        let notifBody = "";
+                                        if (m.text.startsWith("IMG:")) notifBody = "Mengirim Gambar...";
+                                        else if (m.text.startsWith("TYPE:VN:")) notifBody = "Mengirim Voice Note...";
+                                        else if (m.text.startsWith("CALL_JITSI:")) notifBody = "Panggilan Masuk...";
+                                        else {
+                                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan"; }
+                                        }
+                                        
+                                        const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                        showSystemNotification(senderName, notifBody, id);
+                                    }
+                                }
+                            });
+                        };
+                        
+                        notifRef.on("child_added", notifHandler);
+                        chatListeners[id].notif = notifRef;
+                    }
+                }
             });
+        });
+
+        // --- SCENARIO C: REMOVE (Chat dihapus dari database) ---
+        // Cari elemen yang ada di HTML tapi tidak ada di snapshot
+        const existingDivs = document.querySelectorAll('.user');
+        existingDivs.forEach(div => {
+            const divId = div.id.replace('contact-', '');
+            // Jika ID chat tidak ada di list terbaru
+            if (!currentSnapshotIds.includes(divId)) {
+                // Matikan listener dulu
+                if (chatListeners[divId]) {
+                    if (chatListeners[divId].badge) chatListeners[divId].badge.off();
+                    if (chatListeners[divId].notif) chatListeners[divId].notif.off();
+                    delete chatListeners[divId];
+                }
+                // Hapus HTML
+                div.remove();
+            }
+        });
+
+        // --- SORTING (Urutkan Chat) ---
+        // Kita susun ulang urutan appendChild berdasarkan waktu terbaru / pinned
+        let items = [];
+        snap.forEach(c => { 
+            items.push({ id: c.key, info: c.val(), isPinned: !!pinnedIds[c.key] });
+        });
+        items.sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return b.info.time - a.info.time;
+        });
+
+        items.forEach(item => {
+            const el = document.getElementById(`contact-${item.id}`);
+            if(el) {
+                list.appendChild(el); // appendChild memindahkan elemen ke bawah (ke posisi terakhir)
+            }
         });
     });
 }
@@ -1037,7 +1061,10 @@ function openChat(pId, photo, name, grp = false) {
     isGroup = grp;
     currentChatId = grp ? pId : [currentUser, pId].sort().join("_");
     
-    activeChatRef = db.ref("chats/" + currentChatId);
+    // --- OPTIMASI 1: LimitToLast(50) ---
+    // Kita hanya memuat 50 pesan terakhir agar tidak LAG saat membuka chat.
+    // Jika user scroll ke atas, baru kita load pesan lebih lama (opsional).
+    activeChatRef = db.ref("chats/" + currentChatId).limitToLast(50);
 
     document.getElementById("emojiPanel").style.display = "none";
     if (window.innerWidth <= 768) document.getElementById("sidebar").classList.add("hidden");
@@ -1052,12 +1079,22 @@ function openChat(pId, photo, name, grp = false) {
     const msgsDiv = document.getElementById("msgs");
     msgsDiv.innerHTML = "";
 
+    // --- OPTIMASI 2: Listener Pesan ---
     activeChatRef.on("child_added", snap => {
-        renderMessage(snap.val(), snap.key);
+        const m = snap.val();
+        
+        // Cek data valid
+        if(!m) return;
+
+        renderMessage(m, snap.key);
         msgsDiv.scrollTop = msgsDiv.scrollHeight;
         
-        if(snap.val().from !== currentUser && !snap.val().seen) {
-            db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true });
+        // LOGIKA AUTO READ (STANDAR)
+        // Hanya update seen jika: Bukan pesan saya sendiri && Belum terbaca
+        // Kita cek 'm' dari snapshot agar tidak query ke DB dua kali
+        if (m.from !== currentUser && !m.seen) {
+            db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true })
+                .catch(e => console.log("Gagal update seen:", e));
         }
     });
 
@@ -1069,9 +1106,15 @@ function openChat(pId, photo, name, grp = false) {
         }
     });
 
-    db.ref(`typing/${currentChatId}`).off();
+    // --- Listener Typing ---
+    // Matikan listener lama agar tidak tertumpuk
+    const typingRef = db.ref(`typing/${currentChatId}`);
+    // Gunakan fungsi off pada referensi yang tepat
+    // Kita tidak perlu 'off' disini karena watchTyping akan menghandle referensi
+    
     watchTyping(currentChatId);
 
+    // --- Update Status ---
     if(!grp) {
         updatePartnerOnlineStatus();
     } else { 
@@ -2181,4 +2224,5 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
