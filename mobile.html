@@ -2720,26 +2720,36 @@
             label.style.color = "#ccc";
         }
     }
-
-          function openLightbox(url) {
+            
+    function openLightbox(url) {
         const modal = document.getElementById('imageLightbox');
         const img = document.getElementById('lightboxImg');
         const err = document.getElementById('lightboxError');
         
+        // Tampilkan Modal Lightbox
         modal.style.display = 'flex';
-        img.style.display = 'block'; // Tampilkan gambar
-        err.style.display = 'none'; // Sembunyikan teks error
         
+        // Reset Tampilan: Tampilkan Gambar, Sembunyikan Teks Error
+        img.style.display = 'block';
+        err.style.display = 'none';
+        
+        // Set URL Gambar
         img.src = url;
 
-        // Set listener khusus untuk gambar ini
+        // LOGIKA: Jika gambar gagal dimuat (Error)
         img.onerror = function() {
-            img.style.display = 'none'; // Sembunyikan gambar
-            err.style.display = 'block'; // Tampilkan teks error
-            img.onerror = null; // Hapus listener agar tidak looping
+            // 1. Sembunyikan gambar yang gagal
+            img.style.display = 'none';
+            
+            // 2. Tampilkan teks "Gagal memuat gambar"
+            err.style.display = 'block';
+            
+            // 3. MATIKAN ONERROR (PENTING!)
+            // Ini mencegah browser mencoba memuat ulang jika teks error gagal, 
+            // sehingga loop spam error berhenti.
+            img.onerror = null; 
         };
-    }}
-
+    }
     function closeLightbox() {
         document.getElementById('imageLightbox').style.display = 'none';
         document.getElementById('lightboxImg').src = '';
@@ -2749,6 +2759,7 @@
     </body>
 
     </html>
+
 
 
 
