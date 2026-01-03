@@ -1810,19 +1810,27 @@
         } else {
             let textBody = "";
             try {
-                          // GANTI BAGIAN INI DI DALAM renderMessage
-            
+                          // GANTI BAGIAN INI DI DALAM renderMessage//
             if (m.text.startsWith("IMG:")) {
-                const url = decryptData(m.text.replace("IMG:", ""));
-                
-                // --- DEBUG: Cek URL ---
-                if (!url || url === "" || url.includes("[Pesan Terenkripsi]")) {
-                    textBody = `<div style="background:#ffcccc; color:#990000; padding:10px; border-radius:10px; text-align:center;">
-                        <i class="fas fa-exclamation-triangle"></i><br>
-                        Gambar error/gagal dimuat
-                    </div>`;
-                // Fallback: Coba buka lightbox error juga
-                    textBody += `<br><span style="font-size:10px; cursor:pointer; text-decoration:underline; color:#ff5e5e;" onclick="openLightbox('${url}')">Coba Buka Error</span>`;
+                let url = "";
+                try {
+                    url = decryptData(m.text.replace("IMG:", ""));
+                } catch(e) { url = null; }
+
+                // --- PENGECEKAN KESALAHAN ---
+                // 1. URL kosong
+                // 2. URL berisi teks error (dekripsi gagal)
+                // 3. URL terlalu pendek (Base64 asli pasti panjang, <100 kemungkinan error)
+                if (!url || url === "" || url.includes("[Pesan Terenkripsi]") || url.length < 100) {
+                    
+                    // TAMPILKAN KOTAK MERAH (HANYA HTML/CSS, TANPA GAMBAR)
+                    textBody = `
+                        <div style="background:#ffcccc; color:#990000; padding:15px; border-radius:10px; text-align:center; border:1px solid #ff9999;">
+                            <i class="fas fa-exclamation-triangle" style="font-size:24px; margin-bottom:5px;"></i>
+                            <div style="font-weight:bold;">Gambar Error</div>
+                            <div style="font-size:11px; opacity:0.8;">Gagal memuat data gambar.</div>
+                        </div>
+                    `;
                 } 
                 // --- LOGIKA VIEW ONCE ---
                 else if (m.viewOnce) {
@@ -1838,7 +1846,7 @@
                         </div>
                     `;
                 } else {
-                    // Tampilan Gambar Normal (PAKAI LIGHTBOX, JANGAN WINDOW.OPEN)
+                    // Tampilan Gambar Normal (PAKAI LIGHTBOX)
                     textBody = `<img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
                 }
             }
@@ -2728,6 +2736,7 @@
     </body>
 
     </html>
+
 
 
 
