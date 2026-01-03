@@ -20,12 +20,12 @@
     <script src="https://meet.jit.si/external_api.js"></script>
   
    
-   <style>
+<style>
     :root {
         --bg-base: #0a0a0a;
-        --glass-white: rgba(255, 255, 255, 0.03);
+        --glass-white: rgba(255,255,255, 0.03);
         --glass-thick: rgba(15, 15, 15, 0.98);
-        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255,255,255, 0.08);
         --accent: #d4a373; 
         --text-main: #f0f0f0;
         --text-muted: #888;
@@ -60,13 +60,21 @@
     }
     .search-box input { background: transparent; border: none; color: white; width: 100%; font-size: 14px; }
     
-    #users { flex: 1; overflow-y: auto; padding: 10px; }
+    #users { 
+        flex: 1; 
+        overflow-y: auto; 
+        padding: 10px; 
+    }
     .user { 
-        padding: 14px; border-radius: 18px; display: flex; align-items: center; 
-        gap: 14px; cursor: pointer; margin-bottom: 8px; transition: 0.2s; position: relative; 
-        display: flex;
-        flex-direction: column; 
-    
+        padding: 14px; 
+        border-radius: 18px; 
+        display: flex; 
+        align-items: center; 
+        gap: 14px; 
+        cursor: pointer; 
+        margin-bottom: 8px; 
+        transition: 0.2s; 
+        position: relative; 
     }
     .user:hover { background: var(--glass-white); }
     .user img { width: 52px; height: 52px; border-radius: 16px; object-fit: cover; }
@@ -111,11 +119,8 @@
     
     /* --- UPDATE: AGAR PESAN SAYA MIRIP TEMA TEMAN (PUTIH) --- */
     .me .msg { 
-        /* Kita GUNAKAN style 'you' (Transparent & Teks Putih) */
         background: var(--you-chat); 
         color: white; 
-        
-        /* Opsional: Hilangkan border radius kiri biar rapi kaya teman */
         border-bottom-left-radius: 18px; 
     }
     .msg-meta { display: flex; align-items: center; gap: 4px; font-size: 10px; opacity: 0.7; margin-top: 4px; }
@@ -136,10 +141,9 @@
     
 /* --- 1. INPUT AREA (BASE: KHUSUS HP) --- */
     .input-area { 
-        padding: 10px 2px; /* Padding samping sangat tipis untuk HP */
+        padding: 10px 2px; 
         background: var(--bg-base); 
         border-top: 1px solid var(--glass-border); 
-        /* Padding bawah 30px agar tidak kepotong Home Bar */
         padding-bottom: calc(30px + env(safe-area-inset-bottom)); 
         position: relative;
         min-height: 60px; 
@@ -151,11 +155,11 @@
         align-items: center; 
         gap: 4px; 
         background: var(--glass-white); 
-        padding: 10px 2px; /* Padding samping dijadikan 2px supaya benar-benar mepet */
+        padding: 10px 2px; 
         border-radius: 25px; 
         border: 1px solid var(--glass-border);
         min-height: 45px;
-        width: 100%; /* Pastikan lebar 100% */
+        width: 100%; 
     }
 
     /* --- 2. RECORDING UI --- */
@@ -164,14 +168,14 @@
         align-items: center;
         justify-content: space-between;
         width: 100%; 
-        flex: 1; /* PENTING: Memaksa elemen ini mengisi sisa ruang kosong */
+        flex: 1; 
         background: transparent; 
-        padding: 0px 2px; /* Padding vertikal dan horizontal dijadikan 0/2px */
+        padding: 0px 2px; 
         border-radius: 12px;
         pointer-events: none; 
         position: relative;
         z-index: 10;
-        overflow: visible; /* Supaya animasi bisa keluar dikit */
+        overflow: visible; 
     }
 
     /* --- 3. RECORD INFO (Timer Kiri) --- */
@@ -180,9 +184,9 @@
         display: flex;
         align-items: center;
         gap: 4px;
-        font-size: 11px; /* Dikit diperkecil lagi */
+        font-size: 11px; 
         font-weight: 600;
-        flex-shrink: 0; /* JANGAN DIKECILKAN otomatis, biarkan timer tetap utuh */
+        flex-shrink: 0; 
     }
 
     /* --- 4. INSTRUKSI SLIDE (KANAN) --- */
@@ -192,14 +196,12 @@
         animation: slideLeft 1.5s infinite;
         display: flex;
         align-items: center;
-        justify-content: flex-end; /* Rata kanan */
+        justify-content: flex-end; 
         gap: 2px;
-        
-        /* --- PENTING: INI YANG MENCEGAH KELEBARAN --- */
-        max-width: 45%; /* Batasi lebar maksimal hanya 45% layar HP */
-        white-space: nowrap; /* Jangan turun ke baris bawah */
-        overflow: hidden; /* Sembunyikan teks yang kepanjangan */
-        text-overflow: ellipsis; /* Tampilkan titik-titik (...) jika kepanjangan */
+        max-width: 45%; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
     }
 
     /* =========================================
@@ -213,242 +215,228 @@
 
         #slide-instruction {
             font-size: 13px;
-            max-width: 60%; /* Di laptop boleh lebih lebar */
-            white-space: nowrap; /* Tetap satu baris */
+            max-width: 60%; 
+            white-space: nowrap; 
         }
     }
         
-        #text { 
-            flex: 1; 
-            border: none; 
-            background: transparent; 
-            color: white; 
-            padding: 8px 2px; /* Padding atas bawah disesuaikan agar rapi */
-            font-size: 16px; /* Tetap 16px agar tidak zoom */
-        }
-        
-        .btn-action { 
-            background: none; 
-            border: none; 
-            color: var(--text-muted); 
-            font-size: 20px; 
-            cursor: pointer; 
-            /* Tambahkan sedikit margin agar tidak menempel tepi */
-            margin: 0 2px;
-        }
+    #text { 
+        flex: 1; 
+        border: none; 
+        background: transparent; 
+        color: white; 
+        padding: 8px 2px; 
+        font-size: 16px; 
+    }
+    
+    .btn-action { 
+        background: none; 
+        border: none; 
+        color: var(--text-muted); 
+        font-size: 20px; 
+        cursor: pointer; 
+        margin: 0 2px;
+    }
 
-        #emojiPanel {
-            display: none; position: absolute; bottom: 85px; left: 15px; right: 15px;
-            background: #161616; border: 1px solid var(--glass-border); border-radius: 20px;
-            padding: 15px; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px;
-            max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
-        }
-        .emoji-item { font-size: 24px; text-align: center; cursor: pointer; padding: 5px; border-radius: 10px; transition: 0.2s; }
-        .emoji-item:hover { background: var(--glass-white); }
-        
-        .recording-active { animation: pulse-red 1s infinite; color: #ff5e5e !important; }
-        @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    #emojiPanel {
+        display: none; position: absolute; bottom: 85px; left: 15px; right: 15px;
+        background: #161616; border: 1px solid var(--glass-border); border-radius: 20px;
+        padding: 15px; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px;
+        max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+    }
+    .emoji-item { font-size: 24px; text-align: center; cursor: pointer; padding: 5px; border-radius: 10px; transition: 0.2s; }
+    .emoji-item:hover { background: var(--glass-white); }
+    
+    .recording-active { animation: pulse-red 1s infinite; color: #ff5e5e !important; }
+    @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-        .btn-send { 
-            background: var(--accent); border: none; width: 38px; height: 38px; /* Dikit diperkecil */
-            border-radius: 50%; color: black; cursor: pointer; 
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; /* Mencegah tombol mengecil */
-        }
+    .btn-send { 
+        background: var(--accent); border: none; width: 38px; height: 38px; 
+        border-radius: 50%; color: black; cursor: pointer; 
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; 
+    }
 
-        #toast { 
-            position: fixed; top: 40px; left: 50%; transform: translateX(-50%); 
-            background: var(--accent); color: black; padding: 10px 20px; 
-            border-radius: 20px; z-index: 9999; display: none; font-weight: bold; 
-        }
+    #toast { 
+        position: fixed; top: 40px; left: 50%; transform: translateX(-50%); 
+        background: var(--accent); color: black; padding: 10px 20px; 
+        border-radius: 20px; z-index: 9999; display: none; font-weight: bold; 
+    }
 
     .modal {
-            display: none; 
-            position: fixed; 
-            inset: 0; 
-            background: rgba(0,0,0,0.9); 
-            z-index: 3000; 
-            align-items: center; 
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-        .modal-content { 
-            background: #161616; padding: 30px; border-radius: 25px; 
-            width: 85%; max-width: 350px; text-align: center; border: 1px solid var(--glass-border);
-        }
+        display: none; 
+        position: fixed; 
+        inset: 0; 
+        background: rgba(0,0,0,0.9); 
+        z-index: 3000; 
+        align-items: center; 
+        justify-content: center;
+        backdrop-filter: blur(5px);
+    }
+    .modal-content { 
+        background: #161616; padding: 30px; border-radius: 25px; 
+        width: 85%; max-width: 350px; text-align: center; border: 1px solid var(--glass-border);
+    }
 
-        @media (max-width: 768px) {
-            .sidebar { width: 100%; position: absolute; height: 100%; left: 0; top: 0; }
-            .sidebar.hidden { transform: translateX(-100%); }
-            .chat { width: 100%; }
-        }
+    @media (max-width: 768px) {
+        .sidebar { width: 100%; position: absolute; height: 100%; left: 0; top: 0; }
+        .sidebar.hidden { transform: translateX(-100%); }
+        .chat { width: 100%; }
+    }
 
-        /* Style untuk Menu Pilihan */
-        .msg-context-menu {
-            display: none; position: fixed; z-index: 2000;
-            background: #1a1a1a; border: 1px solid var(--glass-border);
-            border-radius: 15px; width: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .menu-item {
-            padding: 12px 15px; font-size: 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;
-        }
-        .menu-item:hover { background: var(--glass-white); color: var(--accent); }
-        .menu-item.danger { color: #ff5e5e; }
+    /* Style untuk Menu Pilihan */
+    .msg-context-menu {
+        display: none; position: fixed; z-index: 2000;
+        background: #1a1a1a; border: 1px solid var(--glass-border);
+        border-radius: 15px; width: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .menu-item {
+        padding: 12px 15px; font-size: 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;
+    }
+    .menu-item:hover { background: var(--glass-white); color: var(--accent); }
+    .menu-item.danger { color: #ff5e5e; }
 
-        #reply-preview {
-            display: none; 
-            padding: 10px 12px; /* Padding dikit diperkecil */
-            background: #1a1a1a; 
-            border-left: 4px solid var(--accent); 
-            border-top: 1px solid var(--glass-border);
-            margin: 0; 
-            position: absolute;
-            bottom: 100%; 
-            left: 0;
-            right: 0;
-            z-index: 5;
-            animation: slideUp 0.2s ease;
-        }
+    #reply-preview {
+        display: none; 
+        padding: 10px 12px; 
+        background: #1a1a1a; 
+        border-left: 4px solid var(--accent); 
+        border-top: 1px solid var(--glass-border);
+        margin: 0; 
+        position: absolute;
+        bottom: 100%; 
+        left: 0;
+        right: 0;
+        z-index: 5;
+        animation: slideUp 0.2s ease;
+    }
 
-        @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .forward-tag { font-size: 10px; opacity: 0.6; font-style: italic; margin-bottom: 3px; }
-        
-        /* Action Sheet Hapus */
-        .action-sheet-overlay {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            z-index: 3000; align-items: flex-end;
-        }
-        .action-sheet {
-            width: 100%; background: #1a1a1a; border-top-left-radius: 20px; border-top-right-radius: 20px;
-            padding: 20px; animation: slideUp 0.3s ease-out;
-        }
-        .sheet-header { color: #888; text-align: center; margin-bottom: 15px; font-size: 14px; }
-        .sheet-btn {
-            width: 100%; padding: 15px; border: none; border-radius: 12px; margin-bottom: 10px;
-            font-size: 16px; font-weight: bold; cursor: pointer;
-        }
-        .sheet-btn.danger { background: #ff4757; color: white; }
-        .sheet-btn.cancel { background: #333; color: white; }
+    @keyframes slideUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .forward-tag { font-size: 10px; opacity: 0.6; font-style: italic; margin-bottom: 3px; }
+    
+    /* Action Sheet Hapus */
+    .action-sheet-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+        z-index: 3000; align-items: flex-end;
+    }
+    .action-sheet {
+        width: 100%; background: #1a1a1a; border-top-left-radius: 20px; border-top-right-radius: 20px;
+        padding: 20px; animation: slideUp 0.3s ease-out;
+    }
+    .sheet-header { color: #888; text-align: center; margin-bottom: 15px; font-size: 14px; }
+    .sheet-btn {
+        width: 100%; padding: 15px; border: none; border-radius: 12px; margin-bottom: 10px;
+        font-size: 16px; font-weight: bold; cursor: pointer;
+    }
+    .sheet-btn.danger { background: #ff4757; color: white; }
+    .sheet-btn.cancel { background: #333; color: white; }
 
-        .user.pinned {
-            background: rgba(212, 163, 115, 0.12) !important;
-            border-left: 4px solid var(--accent) !important;
-        }
+    .context-menu {
+        position: fixed !important;
+        display: none;
+        background: #1a1a1a !important; 
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 12px !important;
+        width: 180px !important;
+        z-index: 9999999 !important; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
+        overflow: hidden !important;
+        padding: 5px 0 !important;
+    }
 
-        .pin-icon {
-            color: var(--accent);
-            font-size: 11px;
-            margin-left: 6px;
-            transform: rotate(45deg);
-            display: inline-block;
-        } 
+    .context-menu-item {
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+        color: #ffffff !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        cursor: pointer !important;
+        background: transparent !important;
+        transition: 0.2s;
+    }
 
-        .context-menu {
-            position: fixed !important;
-            display: none;
-            background: #1a1a1a !important; 
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            border-radius: 12px !important;
-            width: 180px !important;
-            z-index: 9999999 !important; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
-            overflow: hidden !important;
-            padding: 5px 0 !important;
-        }
+    .context-menu-item:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
 
-        .context-menu-item {
-            padding: 12px 16px !important;
-            font-size: 14px !important;
-            color: #ffffff !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 12px !important;
-            cursor: pointer !important;
-            background: transparent !important;
-            transition: 0.2s;
-        }
+    .context-menu-item i {
+        width: 20px !important;
+        text-align: center !important;
+        color: #d4af37 !important; 
+    }
 
-        .context-menu-item:hover {
-            background: rgba(255, 255, 255, 0.1) !important;
-        }
+    .context-menu-item.danger {
+        color: #ff5e5e !important;
+    }
 
-        .context-menu-item i {
-            width: 20px !important;
-            text-align: center !important;
-            color: #d4af37 !important; 
-        }
+    .context-menu-item.danger i {
+        color: #ff5e5e !important;
+    }
 
-        .context-menu-item.danger {
-            color: #ff5e5e !important;
-        }
+    #recording-ui[style*="display: flex"] {
+        pointer-events: auto;
+    }
 
-        .context-menu-item.danger i {
-            color: #ff5e5e !important;
-        }
+    .blink {
+        animation: blink-red 1s infinite;
+    }
 
-        #recording-ui[style*="display: flex"] {
-            pointer-events: auto;
-        }
-
-        .blink {
-            animation: blink-red 1s infinite;
-        }
-
-        @keyframes blink-red {
-            0% { opacity: 1; }
-            50% { opacity: 0.2; }
-            100% { opacity: 1; }
-        }
+    @keyframes blink-red {
+        0% { opacity: 1; }
+        50% { opacity: 0.2; }
+        100% { opacity: 1; }
+    }
 
 
-        @keyframes slideLeft {
-            0% { 
-                transform: translateX(0); 
-                opacity: 1; 
-            }
-            100% { 
-                transform: translateX(-15px); 
-                opacity: 0.2; 
-            }
+    @keyframes slideLeft {
+        0% { 
+            transform: translateX(0); 
+            opacity: 1; 
         }
+        100% { 
+            transform: translateX(-15px); 
+            opacity: 0.2; 
+        }
+    }
 
-        #normal-input {
-            transition: all 0.2s ease;
-        }
-        .btn-action, #micButton {
-            cursor: pointer; 
-            user-select: none; 
-        }
-        
-        .vn-player {
-            max-width: 200px;
-            height: 35px;
-            border-radius: 20px;
-            filter: sepia(20%) saturate(70%) grayscale(1);
-        }
-        
-        .fa-users, .fa-user-plus {
-            position: relative;
-            z-index: 10;
-        }
+    #normal-input {
+        transition: all 0.2s ease;
+    }
+    .btn-action, #micButton {
+        cursor: pointer; 
+        user-select: none; 
+    }
+    
+    .vn-player {
+        max-width: 200px;
+        height: 35px;
+        border-radius: 20px;
+        filter: sepia(20%) saturate(70%) grayscale(1);
+    }
+    
+    .fa-users, .fa-user-plus {
+        position: relative;
+        z-index: 10;
+    }
 
-        /* =========================================
-        MODAL VIDEO CALL (JITSI ONLY - GANTIKAN AGORA)
-        ========================================= */
+    /* =========================================
+    MODAL VIDEO CALL (JITSI ONLY - GANTIKAN AGORA)
+    ========================================= */
 
     /* 1. Modal Utama */
     #videoCallModal {
-        display: none; /* Hidden by default */
+        display: none; 
         position: fixed;
-        inset: 0; /* Sama seperti top:0; right:0; bottom:0; left:0; */
+        inset: 0; 
         background: #000;
-        z-index: 10000000; /* Paling Atas (Agar menutupi semua) */
+        z-index: 10000000; 
         width: 100%;
         height: 100%;
-        padding-top: env(safe-area-inset-top); /* Safe Area iPhone */
+        padding-top: env(safe-area-inset-top); 
         padding-bottom: env(safe-area-inset-bottom);
     }
 
@@ -456,19 +444,18 @@
     #jitsi-container {
         width: 100%;
         height: 100%;
-        display: none; /* Hidden saat tidak dipakai */
+        display: none; 
     }
 
-        /* =========================================
-        CALL OVERLAY (FULL SCREEN ANIMATION)
-        ========================================= */
+    /* =========================================
+    CALL OVERLAY (FULL SCREEN ANIMATION)
+    ========================================= */
     #call-overlay {
-        display: none; /* Hidden by default */
+        display: none; 
         position: fixed;
         inset: 0;
         background: #000;
-        z-index: 10000000; /* Paling atas */
-        display: flex;
+        z-index: 10000000; 
         flex-direction: column;
         align-items: center;
         justify-content: center;
@@ -533,7 +520,7 @@
     /* Tombol Action Bawah */
     .call-actions {
         position: absolute;
-        bottom: 60px; /* Naikkan sedikit jika di HP */
+        bottom: 60px; 
         display: flex;
         gap: 40px;
         z-index: 2;
@@ -558,13 +545,13 @@
     .btn-call:active { transform: scale(0.9); }
 
     .btn-accept {
-        background: #2ecc71; /* Hijau */
+        background: #2ecc71; 
         color: white;
         box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
     }
 
     .btn-reject {
-        background: #e74c3c; /* Merah */
+        background: #e74c3c; 
         color: white;
         box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
     }
@@ -576,7 +563,7 @@
     }
 
 
-    </style>
+</style>
 </head>
 <body>
 
@@ -1157,14 +1144,15 @@
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-    function loadContacts() {
-        console.log("[LOAD] Memuat contacts...");
+        function loadContacts() {
+        console.log("[LOAD] Memuat contacts (Clean Version)...");
         
         // 1. MATIKAN LISTENER LAMA
         if (contactsListener) {
             db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
         }
 
+        // Matikan listeners spesifik
         for (const id in chatListeners) {
             if (chatListeners[id].badge) {
                 chatListeners[id].badge.off();
@@ -1177,20 +1165,17 @@
 
         // 2. LISTENER UTAMA
         const newListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
-            
-            // Ambil Data Pinned
-            const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
-            const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
             
             // HAPUS SEMUA VISUAL
             list.innerHTML = ""; 
 
-            let items = []; // Array data
-            const promises = []; // Array Promise fetch user
+            let items = [];
             let activeIds = [];
 
             // 3. LOOP & FETCH USER
+            const promises = [];
+            
             snap.forEach(c => { 
                 const id = c.key;
                 const info = c.val();
@@ -1199,44 +1184,14 @@
 
                 const p = new Promise((resolve) => {
                     const isGrp = id.startsWith("GROUP_");
-                    const isPinned = !!pinnedIds[id]; // Cek status pin
                     const refPath = isGrp ? "groups/" + id : "users/" + id;
                     const chatId = isGrp ? id : [currentUser, id].sort().join("_");
                     
                     db.ref(refPath).once("value", uSnap => {
                         const u = uSnap.val();
-                        
-                        // Elemen DOM akan dibuat baru karena list.innerHTML = ""
-                        let div = document.createElement("div");
-                        div.id = `contact-${id}`; 
-                        div.className = `user ${isPinned ? 'pinned' : ''}`;
-                        
-                        // Set CSS Order (Di sini, bukan di append nanti)
-                        // Kita set sementara 999 (paling bawah), nanti diupdate di loop bawah
-                        div.style.order = 999; 
-
-                        div.onclick = (e) => {
-                            if (e.target.tagName !== 'IMG') { 
-                                openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
-                            }
-                        };
-                        
-                        div.innerHTML = `
-                            <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
-                                 onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
-                                 style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
-                            <div class="user-info">
-                                <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
-                                <span>${info.lastMsg || '...'}</span>
-                            </div>
-                        `;
-                        setupHoldListener(div, id);
-
                         resolve({
-                            id: id, 
-                            el: div,
+                            id: id,
                             info: info,
-                            isPinned: isPinned,
                             isGrp: isGrp,
                             u: u,
                             chatId: chatId
@@ -1246,35 +1201,17 @@
                 promises.push(p);
             });
 
-            // 4. TUNGGU SELESAI
+            // 4. TUNGGU SEMUA DATA SELESAI
             const results = await Promise.all(promises);
 
-            // 5. SORTING (LOGIKA URUTAN)
-            // Pindahkan Pinned ke awal array
-            results.sort((a, b) => {
-                if (a.isPinned && !b.isPinned) return -1; // A Pindah ke atas (Index kecil)
-                if (!a.isPinned && b.isPinned) return 1;  // B Pindah ke atas
-                return b.info.time - a.info.time; // Terbaru dulu
-            });
-
-            // 6. APPEND DAN SET ORDER VISUAL
-            results.forEach((item, index) => {
-                // PENTING: Update CSS Order disini
-                // Index 0 = Paling Atas, Index Terakhir = Paling Bawah
-                item.el.style.order = index; 
-                
-                list.appendChild(item.el);
-            });
-
-            // 7. SETUP LISTENER (BADGE & NOTIF) (Disini kita logic ulang agar bersih)
+            // 5. SETUP LISTENER (BADGE & NOTIF)
             results.forEach(item => {
                 const id = item.id;
                 const u = item.u;
-                const isPinned = item.isPinned;
                 const isGrp = item.isGrp;
                 const chatId = item.chatId;
 
-                // Init Listener jika belum ada
+                // Init Object
                 if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
 
                 // Badge Listener
@@ -1305,7 +1242,7 @@
                     unreadRef.on("value", badgeHandler);
                     chatListeners[id].badge = unreadRef; 
                 }
-
+                
                 // Notif Listener
                 if (!chatListeners[id].notif) {
                     const notifRef = db.ref("chats/" + chatId).limitToLast(20);
@@ -1314,14 +1251,12 @@
                         if (!m || !m.text) return;
                         if (m.from === currentUser) return;
                         if (m.deleted) return;
-                        const isRecent = (Date.now() - m.time) < 20000; 
-                        if (!isRecent) return;
+                        if ((Date.now() - m.time) > 20000) return;
                         if (currentChatId === chatId) return;
 
                         let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
                         let notifBody = "";
                         let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
-                        let notifTag = `chat_${chatId}`; 
                         let soundType = 'message';
 
                         if (m.text.startsWith("CALL_JITSI:")) {
@@ -1330,7 +1265,6 @@
                             const roomName = p[2];
                             notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
                             notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
-                            notifTag = `call_${callType}_${chatId}`; 
                             soundType = 'ringtone';
                             showCallOverlay(roomName, callType, notifTitle, u?.photo);
                         } else if (m.text.startsWith("IMG:")) {
@@ -1342,16 +1276,68 @@
                             try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
                         }
                         playNotificationSound(soundType);
-                        showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
+                        showBrowserNotification(notifTitle, notifBody, notifIcon, `chat_${chatId}`);
                     };
                     notifRef.on("child_added", notifHandler);
                     chatListeners[id].notif = notifRef;
                 }
             });
 
-            // 8. REFLOW TRIGGER (PAKSA BROWSER GAMBAR ULANG)
-            // Ini penting untuk iOS agar visual order berubah
-            void list.offsetHeight; 
+            // 6. SORTING (HANYA BERDASARKAN WAKU)
+            // Terbaru (Waktu besar) di awal array -> di atas
+            // Lama (Waktu kecil) di akhir array -> di bawah
+            results.sort((a, b) => b.info.time - a.info.time);
+
+            // 7. RENDER (APPEND KE LAYAR)
+            results.forEach(item => {
+                const id = item.id;
+                const u = item.u;
+                const isGrp = item.isGrp;
+                
+                // Create DOM
+                let div = document.createElement("div");
+                div.id = `contact-${id}`; 
+                div.className = `user`; // Tidak ada class 'pinned'
+                div.onclick = (e) => {
+                    if (e.target.tagName !== 'IMG') { 
+                        openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
+                    }
+                };
+                
+                div.innerHTML = `
+                    <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
+                         onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
+                         style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
+                    <div class="user-info">
+                        <b>${u?.name || u?.username || id}</b>
+                        <span>${item.info.lastMsg || '...'}</span>
+                    </div>
+                `;
+                setupHoldListener(div, id);
+
+                // Append. Karena array sudah di-sort (Terbaru di index 0), append akan menaruhnya paling atas.
+                list.appendChild(div);
+            });
+
+            // 8. HAPUS KONTAK TIDAK AKTIF
+            const existingDivs = document.querySelectorAll('.user');
+            existingDivs.forEach(div => {
+                const divId = div.id.replace('contact-', '');
+                if (!activeIds.includes(divId)) {
+                    if (chatListeners[divId]) {
+                        if (chatListeners[divId].badge) {
+                            chatListeners[divId].badge.off();
+                            chatListeners[divId].badge = null;
+                        }
+                        if (chatListeners[divId].notif) {
+                            chatListeners[divId].notif.off();
+                            chatListeners[divId].notif = null;
+                        }
+                        delete chatListeners[divId];
+                    }
+                    div.remove();
+                }
+            });
 
             contactsListener = newListener;
         });
@@ -2038,50 +2024,7 @@
         }
     }
 
-      function pinChat(targetId) {
-        const pinRef = db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`);
-
-        // Ambil data SEMUA pin untuk cek berapa jumlahnya saat ini
-        db.ref(`user_settings/${currentUser}/pinned_chats`).once("value", (allPinsSnap) => {
-            const allPins = allPinsSnap.val() || {};
-            const isCurrentlyPinned = !!allPins[targetId];
-
-            if (isCurrentlyPinned) {
-                // --- LEPAS SEMAT (UNPIN) ---
-                pinRef.remove().then(() => {
-                    showToast("Sematkan dilepas");
-                    // Refresh ulang list agar urutan normal kembali
-                    const list = document.getElementById("users");
-                    if(list) {
-                        list.innerHTML = "";
-                        loadContacts(); 
-                    }
-                });
-
-            } else {
-                // --- COBA SEMAT (PIN) ---
-                const pinCount = Object.keys(allPins).length;
-
-                // CEK LIMIT MAXIMAL 3
-                if (pinCount >= 3) {
-                    showToast("❌ Maksimal 3 Chat disematkan!");
-                    return; // Batalkan aksi pin jika sudah penuh
-                }
-
-                // Jika aman (kurang dari 3), lakukan Pin
-                pinRef.set(true).then(() => {
-                    showToast("✅ Chat disematkan ke atas");
-                    
-                    // Refresh ulang list agar urutan terupdate (Pinned naik ke paling atas)
-                    const list = document.getElementById("users");
-                    if(list) {
-                        list.innerHTML = "";
-                        loadContacts(); 
-                    }
-                });
-            }
-        });
-    }
+     
     function deleteChat(targetId) {
         if (confirm("Hapus percakapan ini dari daftar Anda?")) {
             db.ref(`user_chats/${currentUser}/${targetId}`).remove();
@@ -2416,6 +2359,7 @@
     </body>
 
     </html>
+
 
 
 
