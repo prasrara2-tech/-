@@ -626,6 +626,50 @@
         transform: scale(0.95);
     }
 
+        /* =========================================
+    FITUR SEKALI LIAT (VIEW ONCE)
+    ========================================= */
+    
+    /* Toggle Switch */
+    .view-once-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        cursor: pointer;
+    }
+    .view-once-label { font-size: 12px; color: #ccc; }
+
+    /* Tampilan Gambar Buram (Blur) */
+    .view-once-blur {
+        position: relative;
+        cursor: pointer;
+        overflow: hidden;
+    }
+    
+    /* Efek Blur & Overlay */
+    .view-once-blur img {
+        filter: blur(20px); /* Sangat buram */
+        width: 100%;
+        display: block;
+    }
+    
+    /* Overlay (Tengah Hitam + Mata) */
+    .view-once-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        border-radius: 10px;
+    }
+
+
 
 </style>
 </head>
@@ -807,7 +851,8 @@
         </button>
     </div>
 </div>
-            <!-- MODAL PREVIEW GAMBAR -->
+
+    <!-- MODAL PREVIEW GAMBAR (FITUR VIEW ONCE & PREVIEW) -->
     <div id="imgPreviewModal">
         <div class="preview-content">
             <div style="font-size: 18px; font-weight: 600;">Lihat Gambar</div>
@@ -815,6 +860,11 @@
             <img id="imgPreviewBox" src="" alt="Preview">
             
             <div class="preview-actions">
+                <!-- Toggle View Once -->
+                <div class="view-once-container" onclick="toggleViewOnce()">
+                    <i id="viewOnceIcon" class="far fa-eye"></i> 
+                    <span id="viewOnceLabel" class="view-once-label">Sekali Lihat</span>
+                </div>
                 <button class="btn-preview cancel" onclick="cancelSendImage()">
                     <i class="fas fa-times"></i> Batal
                 </button>
@@ -824,6 +874,8 @@
             </div>
         </div>
     </div>
+
+</body>
         <script>
     /* =========================================
         CONFIG & INIT
@@ -884,6 +936,8 @@
     let currentCallRoom = null;
     let currentCallType = null;
     let pendingImageBase64 = null;
+    let pendingImageBase64 = null;
+    let isViewOnceEnabled = false; // Variabel baru
         
     // Cek Fokus
     window.addEventListener('focus', () => {
@@ -1629,7 +1683,7 @@
         showToast("Panggilan berakhir");
     }
 
-    function renderMessage(m, key) {
+       function renderMessage(m, key) {
         if (document.getElementById("msg-wrap-" + key)) return;
 
         const isMe = m.from === currentUser;
@@ -1696,7 +1750,24 @@
             try {
                 if (m.text.startsWith("IMG:")) {
                     const url = decryptData(m.text.replace("IMG:", ""));
-                    textBody = `<img src="${url}" onclick="window.open('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
+
+                    // --- MODIFIKASI VIEW ONCE ---
+                    if (m.viewOnce) {
+                        // Tampilan Sekali Lihat (Buram + Overlay)
+                        textBody = `
+                            <div class="view-once-blur" onclick="openViewOnceMessage('${key}')">
+                                <img src="${url}" style="width:100%; display:block; filter:blur(25px);">
+                                <div class="view-once-overlay">
+                                    <i class="fas fa-eye" style="font-size:30px; margin-bottom:5px;"></i>
+                                    <div style="font-size:12px;">Klik untuk melihat</div>
+                                    <div style="font-size:10px; color:#ff9999;">(Otomatis terhapus)</div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Tampilan Gambar Normal
+                        textBody = `<img src="${url}" onclick="window.open('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
+                    }
                 } 
                 else if (m.text.startsWith("TYPE:VN:")) {
                     const url = decryptData(m.text.replace("TYPE:VN:", ""));
@@ -1784,7 +1855,6 @@
             }
         }
     }
-
     /* =========================================
         DELETE ACTIONS
         ========================================= */
@@ -1989,20 +2059,42 @@
         
         console.log("Preview dibatalkan.");
     }
-
     function confirmSendImage() {
         if (!pendingImageBase64) return;
         
-        // Kirim Gambar
-        pushMsg("IMG:" + encryptData(pendingImageBase64));
-        updateSummary("📷 Gambar");
+        // Simpan status viewOnce ke database
+        const msgObj = {
+            from: currentUser,
+            text: "IMG:" + encryptData(pendingImageBase64),
+            time: Date.now(),
+            seenBy: { [currentUser]: true }
+        };
+
+        // TAMBAHKAN INI: Jika toggle aktif
+        if (isViewOnceEnabled) {
+            msgObj.viewOnce = true;
+        }
         
-        // Bersihkan
-        pendingImageBase64 = null;
+        if (typeof replyData !== 'undefined' && replyData) msgObj.replyTo = replyData;
+        
+        db.ref("chats/" + currentChatId).push(msgObj).then(() => {
+            showToast("Gambar terkirim!");
+            closeSendImagePreview();
+        });
+    }
+
+    // Fungsi helper untuk menutup modal (gabungkan reset)
+    function closeSendImagePreview() {
         document.getElementById("imgPreviewModal").style.display = "none";
         document.getElementById("imgInput").value = "";
-        
-        showToast("Gambar terkirim!");
+        pendingImageBase64 = null;
+        isViewOnceEnabled = false; // Reset toggle
+        // Reset icon tampilan normal
+        const icon = document.getElementById("viewOnceIcon");
+        const label = document.getElementById("viewOnceLabel");
+        icon.className = "far fa-eye"; 
+        icon.style.color = "#ccc";
+        label.style.color = "#ccc";
     }
 
     // 3. UPDATE FUNGSI send()
@@ -2484,10 +2576,70 @@
         if (mediaRecorder && mediaRecorder.state === "recording") handleStop();
     });
 
+     function openViewOnceMessage(key) {
+        if (!currentChatId) return;
+
+        // 1. Ambil data pesan dulu dari DB
+        db.ref("chats/" + currentChatId + "/" + key).once("value", snap => {
+            const m = snap.val();
+            if (!m || !m.viewOnce) return;
+
+            // 2. Update pesan di DOM agar terlihat gambar aslinya
+            const msgEl = document.getElementById("msg-wrap-" + key);
+            if (msgEl) {
+                const url = decryptData(m.text.replace("IMG:", ""));
+                
+                // Ganti konten menjadi gambar normal
+                const newContent = `
+                    <div class="msg">
+                        <img src="${url}" onclick="window.open('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">
+                    <div style="font-size:10px; text-align:center; opacity:0.6; margin-top:5px;">Telah dilihat</div>
+                    ${m.edited ? `<small style="opacity:0.5; font-size:9px; margin-left:5px;">(diedit)</small>` : ""}
+                    ${m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : ""}
+                    ${m.replyTo ? /* (sederhanakan logic reply di sini) */ "" : ""}
+                    </div>
+                    <div class="msg-meta" style="display:flex; align-items:center; gap:4px; justify-content:flex-end; font-size:10px; opacity:0.7; margin-top:2px;">
+                        ${new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                        ${m.from === currentUser ? (m.seen ? `<span style="color:var(--accent); font-weight:bold;">✓✓</span>` : `✓`) : ""}
+                    </div>
+                `;
+                
+                msgEl.innerHTML = newContent;
+            }
+
+            // 3. HAPUS PESAN DARI DATABASE (Sekali Lihat Berarti Hilang)
+            // Kita ubah text jadi "Pesan dilihat" dan set deleted: true
+            db.ref("chats/" + currentChatId + "/" + key).update({
+                deleted: true,
+                text: encryptData("👁️ Gambar dilihat sekali"),
+                replyTo: null,
+                forwarded: null,
+                viewOnce: false // Matikan flag
+            });
+        });
+    }
+        
+         function toggleViewOnce() {
+        isViewOnceEnabled = !isViewOnceEnabled;
+        const icon = document.getElementById("viewOnceIcon");
+        const label = document.getElementById("viewOnceLabel");
+        
+        if (isViewOnceEnabled) {
+            icon.className = "fas fa-eye-slash"; // Mata tertutup
+            icon.style.color = "#ff5e5e"; // Merah
+            label.style.color = "#ff5e5e";
+        } else {
+            icon.className = "far fa-eye"; // Mata terbuka
+            icon.style.color = "#ccc";
+            label.style.color = "#ccc";
+        }
+    }
+
     </script>
     </body>
 
     </html>
+
 
 
 
