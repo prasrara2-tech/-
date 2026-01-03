@@ -1154,204 +1154,253 @@
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-      function loadContacts() {
+          function loadContacts() {
+        console.log("[LOAD] Memuat contacts...");
+        
         // 1. MATIKAN LISTENER
         if (contactsListener) {
             db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
         }
 
-        // Loop untuk matikan listeners spesifik chat
+        // Matikan listener spesifik
         for (const id in chatListeners) {
-            if (chatListeners[id].badge) chatListeners[id].badge.off();
-            if (chatListeners[id].notif) chatListeners[id].notif.off();
+            if (chatListeners[id].badge) {
+                chatListeners[id].badge.off();
+                console.log(`[LOAD] Matikan badge: ${id}`);
+            }
+            if (chatListeners[id].notif) {
+                chatListeners[id].notif.off();
+                console.log(`[LOAD] Matikan notif: ${id}`);
+            }
         }
         chatListeners = {};
 
-        // 2. BUAT LISTENER BARU
+        // 2. BUAT LISTENER UTAMA
         const newListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
-            console.log("[LOAD] Snapshot diterima.");
             
-            // Ambil Data Pinned
+            // Ambil data Pinned
             const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
             const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
             
-            // --- RESET TAMPILAN (HAPUS SEMUA DULU) ---
-            list.innerHTML = "";
+            // HAPUS SEMUA VISUAL DULU
+            list.innerHTML = ""; 
 
-            let items = []; // Array untuk menyimpan data & elemen DOM
+            let items = []; // Array untuk menyimpan data yang akan di-sort
+            const promises = []; // Array untuk menyimpan Promise data user
+            let activeIds = [];
 
-            // 3. LOOP: BUAT/UPDATE ELEMEN (TAPI JANGAN APPEND KE LAYAR)
+            // 3. LOP & KUMPULKAN DATA USER
             snap.forEach(c => { 
                 const id = c.key;
                 const info = c.val();
                 if(!info) return;
+                activeIds.push(id);
 
-                const el = document.getElementById(`contact-${id}`);
-                const isGrp = id.startsWith("GROUP_");
-                const isPinned = !!pinnedIds[id];
-                const refPath = isGrp ? "groups/" + id : "users/" + id;
-                
-                // Fetch Data User/Grup
-                db.ref(refPath).once("value", uSnap => {
-                    const u = uSnap.val();
-                    const chatId = isGrp ? id : [currentUser, id].sort().join("_");
+                // Buat Promise untuk setiap User ID (Supaya paralel & cepat)
+                const p = new Promise((resolve) => {
+                    const isGrp = id.startsWith("GROUP_");
+                    const refPath = isGrp ? "groups/" + id : "users/" + id;
+                    
+                    db.ref(refPath).once("value", uSnap => {
+                        const u = uSnap.val();
+                        const isPinned = !!pinnedIds[id];
+                        const chatId = isGrp ? id : [currentUser, id].sort().join("_");
 
-                    // Logic UI (Teks)
-                    if (el) {
-                        // UPDATE TEXT SAJA (Jangan append ulang)
-                        const nameEl = el.querySelector("b");
-                        const msgEl = el.querySelector("span");
-                        if(nameEl) nameEl.innerText = `${u?.name || u?.username || id} ${isPinned ? '📌' : ''}`;
-                        if(msgEl) msgEl.innerText = info.lastMsg || '...';
-                        
-                        // Update Class CSS Pinned
-                        if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
-                        if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
-
-                    } else {
-                        // CREATE DIV (MASIH TIDAK DI APPEND)
-                        let div = document.createElement("div");
-                        div.id = `contact-${id}`; 
-                        div.className = `user ${isPinned ? 'pinned' : ''}`;
-                        div.onclick = (e) => {
-                            // Jika klik teks, buka chat
-                            if (e.target.tagName !== 'IMG') { 
-                                openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
-                            }
-                        };
-                        
-                        div.innerHTML = `
-                            <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
-                                 onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
-                                 style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
-                            <div class="user-info">
-                                <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
-                                <span>${info.lastMsg || '...'}</span>
-                            </div>
-                        `;
-
-                        // Setup listener konteks menu
-                        setupHoldListener(div, id);
-                    }
-
-                    // SIMPAN KE ARRAY ITEMS UNTUK DISORTING
-                    items.push({ 
-                        id: id, 
-                        el: el, // Simpan elemen DOM
-                        info: info,
-                        isPinned: isPinned,
-                        isGrp: isGrp
+                        resolve({
+                            id: id,
+                            info: info,
+                            isPinned: isPinned,
+                            isGrp: isGrp,
+                            u: u,
+                            chatId: chatId
+                        });
                     });
+                });
+                promises.push(p);
+            });
 
-                    // SETUP LISTENER (BADGE & NOTIF)
-                    if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
+            // 4. TUNGGU SEMUA DATA SELESAI (KUNCI PERBAIKAN)
+            // Kita tidak akan melanjutkan ke Sortir/Appending sampai 'activeIds' lengkap
+            const results = await Promise.all(promises);
 
-                    // 1. Badge Listener
-                    if (!chatListeners[id].badge) {
-                        const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
-                        const badgeHandler = (unreadSnap) => {
-                            let count = 0;
-                            unreadSnap.forEach(child => { 
-                                const m = child.val();
-                                if (!m) return; 
-                                if(m.from !== currentUser) count++; 
-                            });
-                            const currentEl = document.getElementById(`contact-${id}`);
-                            if(currentEl) {
-                                let badgeEl = currentEl.querySelector('.unread-badge');
-                                if(count > 0) {
-                                    if(!badgeEl) {
-                                        badgeEl = document.createElement("div");
-                                        badgeEl.className = "unread-badge";
-                                        currentEl.appendChild(badgeEl);
-                                    }
-                                    badgeEl.innerText = count;
-                                } else {
-                                    if(badgeEl) badgeEl.remove();
-                                }
-                            }
-                        };
-                        unreadRef.on("value", badgeHandler);
-                        chatListeners[id].badge = unreadRef; 
-                    }
-
-                    // 2. Notification Listener
-                    if (!chatListeners[id].notif) {
-                        const notifRef = db.ref("chats/" + chatId).limitToLast(20);
-                        const notifHandler = (msgSnap) => {
-                            const m = msgSnap.val();
-                            
-                            // Cek Data
-                            if (!m || !m.text) return;
-                            if (m.from === currentUser) return;
-                            if (m.deleted) return;
-
-                            const isRecent = (Date.now() - m.time) < 20000; 
-                            if (!isRecent) return;
-
-                            if (currentChatId === chatId) return;
-
-                            console.log(`[NOTIF] MEMPROSES DARI: ${m.from}`);
-                            let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                            let notifBody = "";
-                            let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
-                            let notifTag = `chat_${chatId}`; 
-                            let soundType = 'message';
-
-                            if (m.text.startsWith("CALL_JITSI:")) {
-                                const p = m.text.split(":");
-                                const callType = p[1]; 
-                                const roomName = p[2];
-                                notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
-                                notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
-                                notifTag = `call_${callType}_${chatId}`; 
-                                soundType = 'ringtone';
-                                showCallOverlay(roomName, callType, notifTitle, u?.photo);
-                            } else if (m.text.startsWith("IMG:")) {
-                                notifBody = "📷 Mengirim Gambar...";
-                            } else if (m.text.startsWith("TYPE:VN:")) {
-                                notifBody = "🎤 Mengirim Voice Note...";
-                                notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; 
-                            } else {
-                                try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
-                            }
-
-                            playNotificationSound(soundType);
-                            showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
-                        };
+            // 5. PROSES DATA & UPDATE UI (LOOP HASIL PROMISES)
+            results.forEach(item => {
+                const { id, info, isPinned, isGrp, u, chatId } = item;
+                
+                // --- INIT LISTENER ---
+                if (!chatListeners[id]) {
+                    // Pindahkan logika initContactListener ke sini atau panggil fungsi
+                    if (typeof initContactListener === 'function') {
+                        initContactListener(id);
+                    } else {
+                        // Fallback logika init listener jika fungsi terpisah tidak dipakai
+                        if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
                         
-                        notifRef.on("child_added", notifHandler);
-                        chatListeners[id].notif = notifRef;
+                        // Setup Badges
+                        if (!chatListeners[id].badge) {
+                            const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
+                            const badgeHandler = (unreadSnap) => {
+                                let count = 0;
+                                unreadSnap.forEach(child => { 
+                                    const m = child.val();
+                                    if (!m) return; 
+                                    if(m.from !== currentUser) count++; 
+                                });
+                                const currentEl = document.getElementById(`contact-${id}`);
+                                if(currentEl) {
+                                    let badgeEl = currentEl.querySelector('.unread-badge');
+                                    if(count > 0) {
+                                        if(!badgeEl) {
+                                            badgeEl = document.createElement("div");
+                                            badgeEl.className = "unread-badge";
+                                            currentEl.appendChild(badgeEl);
+                                        }
+                                        badgeEl.innerText = count;
+                                    } else {
+                                        if(badgeEl) badgeEl.remove();
+                                    }
+                                }
+                            };
+                            unreadRef.on("value", badgeHandler);
+                            chatListeners[id].badge = unreadRef; 
+                        }
+                        
+                        // Setup Notif
+                        if (!chatListeners[id].notif) {
+                            const notifRef = db.ref("chats/" + chatId).limitToLast(20);
+                            const notifHandler = (msgSnap) => {
+                                const m = msgSnap.val();
+                                if (!m || !m.text) return;
+                                if (m.from === currentUser) return;
+                                if (m.deleted) return;
+                                const isRecent = (Date.now() - m.time) < 20000; 
+                                if (!isRecent) return;
+                                if (currentChatId === chatId) return;
+
+                                let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                let notifBody = "";
+                                let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
+                                let notifTag = `chat_${chatId}`; 
+                                let soundType = 'message';
+
+                                if (m.text.startsWith("CALL_JITSI:")) {
+                                    const p = m.text.split(":");
+                                    const callType = p[1]; 
+                                    const roomName = p[2];
+                                    notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
+                                    notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
+                                    notifTag = `call_${callType}_${chatId}`; 
+                                    soundType = 'ringtone';
+                                    showCallOverlay(roomName, callType, notifTitle, u?.photo);
+                                } else if (m.text.startsWith("IMG:")) {
+                                    notifBody = "📷 Mengirim Gambar...";
+                                } else if (m.text.startsWith("TYPE:VN:")) {
+                                    notifBody = "🎤 Mengirim Voice Note...";
+                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; 
+                                } else {
+                                    try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                                }
+                                playNotificationSound(soundType);
+                                showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
+                            };
+                            notifRef.on("child_added", notifHandler);
+                            chatListeners[id].notif = notifRef;
+                        }
                     }
+                }
+
+                // --- UPDATE / CREATE DOM ---
+                const el = document.getElementById(`contact-${id}`);
+                
+                if (el) {
+                    // UPDATE
+                    if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
+                    if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
+                    const nameEl = el.querySelector("b");
+                    const msgEl = el.querySelector("span");
+                    if(nameEl) nameEl.innerText = `${u?.name || u?.username || id} ${isPinned ? '📌' : ''}`;
+                    if(msgEl) msgEl.innerText = info.lastMsg || '...';
+
+                } else {
+                    // CREATE
+                    let div = document.createElement("div");
+                    div.id = `contact-${id}`; 
+                    div.className = `user ${isPinned ? 'pinned' : ''}`;
+                    div.onclick = (e) => {
+                        if (e.target.tagName !== 'IMG') { 
+                            openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
+                        }
+                    };
+                    
+                    div.innerHTML = `
+                        <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
+                             onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
+                             style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
+                        <div class="user-info">
+                            <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
+                            <span>${info.lastMsg || '...'}</span>
+                        </div>
+                    `;
+                    setupHoldListener(div, id);
+                }
+
+                // Push ke array items untuk sorting
+                items.push({ 
+                    id: id, 
+                    el: el || document.getElementById(`contact-${id}`), // Ambil elemen yang baru dibuat atau sudah ada
+                    info: info,
+                    isPinned: isPinned,
+                    isGrp: isGrp,
+                    u: u,
+                    chatId: chatId
                 });
             });
 
-            // 4. SORTING (LOGIKA URUTAN)
-            // Pinned Dulu, kemudian Time Terbaru
+            // 6. HAPUS KONTAK TIDAK AKTIF
+            const existingDivs = document.querySelectorAll('.user');
+            existingDivs.forEach(div => {
+                const divId = div.id.replace('contact-', '');
+                if (!activeIds.includes(divId)) {
+                    if (chatListeners[divId]) {
+                        if (chatListeners[divId].badge) {
+                            chatListeners[divId].badge.off();
+                            chatListeners[divId].badge = null;
+                        }
+                        if (chatListeners[divId].notif) {
+                            chatListeners[divId].notif.off();
+                            chatListeners[divId].notif = null;
+                        }
+                        delete chatListeners[divId];
+                    }
+                    div.remove();
+                }
+            });
+
+            // 7. SORTING (PENTING: JALANKAN SETELAH PROMISE ALL SELESAI)
             items.sort((a, b) => {
-                if (a.isPinned && !b.isPinned) return -1;
+                if (a.isPinned && !b.isPinned) return -1; // Pinned di atas
                 if (!a.isPinned && b.isPinned) return 1;
                 return b.info.time - a.info.time;
             });
 
-            // DEBUG: Lihat Urutan Sortir di Console
-            console.log("[LOAD] Urutan Sortir:", items.map(i => i.id + (i.isPinned ? ' [PIN]' : '')));
+            // DEBUG: Cek urutan sortir di console
+            // console.log("[LOAD] Urutan Sortir:", items.map(i => i.id + (i.isPinned ? ' [PIN]' : '')));
 
-            // 5. APPEND KE LAYAR (Sekali Jalan Urutannya)
+            // 8. APPEND KE LAYAR (MENGIKUT URUTAN SORTIR)
             items.forEach(item => {
-                // Jika elemen DOM belum ada di layar (Baru dibuat)
+                // Cek jika elemen DOM ada (jika baru, belum ada di DOM)
                 if (!document.body.contains(item.el)) {
                     list.appendChild(item.el);
                 } else {
-                    // Jika sudah ada, append (pindah ke posisi baru)
-                    list.appendChild(item.el); 
+                    // Jika sudah ada, append (append akan memindahkan posisi jika berbeda)
+                    list.appendChild(item.el);
                 }
             });
-
-            contactsListener = newListener;
         });
 
+        contactsListener = newListener;
+    }
     /* =========================================
         CALL OVERLAY FUNCTIONS
         ========================================= */
@@ -2412,6 +2461,7 @@
     </body>
 
     </html>
+
 
 
 
