@@ -1,91 +1,76 @@
-const CACHE_NAME = 'gochat-v8'; // Versi dinaikkan ke v8 untuk memaksa update
+const CACHE_NAME = 'gochat-v9'; // Naikkan versi ke v9
 
-// Daftar aset yang harus disimpan agar aplikasi bisa dibuka offline
-// PASTIKAN SEMUA FILE INI ADA DI FOLDER PROYEK ANDA!
 const ASSETS_TO_CACHE = [
-  '/',                      // Root directory (akan menuju index.html otomatis)
-  '/index.html',            // Halaman Utama Chat (SAMA dengan file HTML yang Anda pakai)
+  '/',
+  '/index.html',
   '/manifest.json',
-  
-  // Halaman Profil (Jika Anda memisahkannya)
-  '/profile.html',          
-  '/user-profile.html',     
-  '/group-profile.html',    
-
-  // Aset Lokal (Pastikan folder 'image' dan file ada)
-  '/image/genre/20.png',    // Icon aplikasi
-  
-  // External Libs (CDN) - Wajib dicachekan untuk performa & offline
+  '/profile.html',
+  '/user-profile.html',
+  '/group-profile.html',
+  '/image/genre/20.png',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js',
-  'https://meet.jit.si/external_api.js' // Tambahkan Jitsi agar tampilan call tetap bisa dimuat
+  'https://meet.jit.si/external_api.js'
 ];
 
-// --- 1. Tahap Install: Simpan aset ke Cache ---
+// --- 1. INSTALL ---
 self.addEventListener('install', (event) => {
-  console.log('[SW] Sedang menginstall Service Worker v8...');
+  console.log('[SW v9] Install mulai...');
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Mengunduh aset ke cache...');
-      return cache.addAll(ASSETS_TO_CACHE).catch((error) => {
-        console.error('[SW] Gagal mengunduh aset:', error);
-        // Jangan throw error disini, agar SW tetap jalan meskipun ada file yang tidak ketemu
+      console.log('[SW v9] Cache dibuka, mulai download aset...');
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
+        console.error('[SW v9] GAGAL download aset:', err);
+        // Tidak throw error, biarkan SW tetap aktif walau aset gagal
       });
+    }).then(() => {
+      console.log('[SW v9] Selesai install, skipping waiting...');
+      self.skipWaiting();
     })
   );
-  
-  // Force aktivasi SW baru segera
-  self.skipWaiting();
 });
 
-// --- 2. Tahap Aktivasi: Bersihkan cache lama (v1-v7) ---
+// --- 2. ACTIVATE ---
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Mengaktifkan service worker baru v8...');
+  console.log('[SW v9] Activate mulai...');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
-          // Hapus cache dengan nama lama
           if (cache !== CACHE_NAME) {
-            console.log('[SW] Menghapus cache lama:', cache);
+            console.log('[SW v9] Menghapus cache lama:', cache);
             return caches.delete(cache);
           }
         })
       );
+    }).then(() => {
+      console.log('[SW v9] Selesai activate, claiming clients...');
+      return self.clients.claim();
     })
   );
-  
-  // Menguasai halaman yang terbuka segera
-  return self.clients.claim();
 });
 
-// --- 3. Strategi Fetch: Network First untuk Firebase, Cache First untuk yang lain ---
+// --- 3. FETCH ---
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // --- PENTING: JANGAN CACHE DATABASE & API EKSTERNAL ---
-  // Firebase Database, Cloudinary, dan Jitsi harus selalu diambil dari Network 
-  // agar data chat selalu up-to-date.
+  // Bypass cache untuk Firebase, Cloudinary, Jitsi
   if (url.hostname.includes('firebasedatabase.app') || 
       url.hostname.includes('cloudinary.com') ||
-      url.hostname.includes('jit.si')) { // Tambahkan Jitsi ke exception
+      url.hostname.includes('jit.si')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // --- STRATEGI STALE-WHILE-REVALIDATE UNTUK FILE HTML/CSS/JS/IMG ---
-  // 1. Cek Cache dulu (Cepat)
-  // 2. Ambil dari Network di background (Update)
+  // Cache First untuk Assets Statis
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Ambil data dari network
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Jika network sukses, simpan update ke cache
         if (networkResponse && networkResponse.status === 200) {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, networkResponse.clone());
@@ -94,70 +79,61 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       });
 
-      // Kembalikan cache yang ada dulu (jika ada), jika tidak ada tunggu network
       return cachedResponse || fetchPromise;
     })
   );
 });
 
-// --- 4. Menangani Pesan dari Client (Untuk Trigger Notifikasi Internal) ---
-// Ini menangani pesan "postMessage" yang dikirim dari index.html
+// --- 4. HANDLE MESSAGE (POSTMESSAGE DARI JS) ---
 self.addEventListener('message', (event) => {
+  console.log('[SW v9] Pesan diterima dari client:', event.data);
+
   if (event.data && event.data.type === 'NOTIFICATION') {
     const data = event.data.data;
     
-    // --- TRIK BACKGROUND HITAM (DARK MODE) ---
-    // Menggunakan image data URI 1px hitam pekat agar background notifikasi jadi gelap
-    // (Efektif terutama di Android)
+    // Gambar 1x1 pixel Hitam Pekat untuk Dark Mode
     const blackBg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-    
+
     const options = {
       body: data.body,
       icon: data.icon || '/image/genre/20.png',
-      badge: data.icon || '/image/genre/20.png', // Badge kecil GoChat
-      image: blackBg, // <--- MODIFIKASI: Jadikan background hitam
+      badge: '/image/genre/20.png', // Badge Putih di BG Hitam
+      
+      // --- PENTING: DARK MODE HACK ---
+      // Pada Android/Mobile, 'image' ini akan menjadi background di belakang icon
+      image: blackBg, 
+      
       vibrate: [200, 100, 200],
-      tag: data.tag || 'default', // PENTING: Tag berbeda agar notifikasi pisah
-      data: {
-        url: data.url || '/',
-        click_action: data.url || '/' 
-      },
-      requireInteraction: true,
-      silent: false
+      tag: data.tag || 'default',
+      data: { url: data.url || '/' },
+      requireInteraction: true
     };
 
-    // Tampilkan notifikasi
+    console.log('[SW v9] Menampilkan notifikasi:', data.title);
     self.registration.showNotification(data.title, options);
   }
 });
 
-// --- 5. Menangani Push Notification dari FCM (Jika nanti Anda setup Server Key FCM) ---
+// --- 5. PUSH EVENT (OPSIONAL FCM) ---
 self.addEventListener('push', (event) => {
-  let data = { title: 'GoChat Pro', body: 'Ada pesan baru masuk!' };
+  console.log('[SW v9] Push event terima');
+  let data = { title: 'GoChat Pro', body: 'Ada pesan baru' };
   
   try {
-    if (event.data) {
-      data = event.data.json();
-    }
-  } catch (e) {
-    if(event.data) data.body = event.data.text();
-  }
-  
-  // Background Hitam juga untuk FCM Push
+    if (event.data) data = event.data.json();
+  } catch (e) {}
+
   const blackBg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
   const options = {
     body: data.body,
     icon: '/image/genre/20.png',
     badge: '/image/genre/20.png',
-    image: blackBg, // <--- MODIFIKASI: Jadikan background hitam
+    image: blackBg,
     vibrate: [200, 100, 200],
-    tag: data.tag || 'push_message',
-    data: {
-      url: data.url || '/',
-      click_action: data.url || '/'
-    },
-    requireInteraction: true
+    tag: data.tag || 'push',
+    data: { url: data.url || '/' },
+    requireInteraction: True
   };
 
   event.waitUntil(
@@ -165,20 +141,16 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// --- 6. Menangani Klik pada Notifikasi ---
+// --- 6. CLICK ---
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Cek apakah aplikasi sudah terbuka
       for (const client of clientList) {
-        // Cek apakah URL client sesuai target URL dari notifikasi
         if (client.url.includes(event.notification.data.url) && 'focus' in client) {
           return client.focus();
         }
       }
-      // Jika belum terbuka, buka baru
       if (clients.openWindow) {
         return clients.openWindow(event.notification.data.url);
       }
