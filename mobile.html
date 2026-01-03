@@ -913,7 +913,8 @@
             <!-- MODAL LIGHTBOX GAMBAR -->
     <div id="imageLightbox" onclick="closeLightbox()">
         <div id="lightbox-close"><i class="fas fa-times"></i></div>
-        <img id="lightboxImg" src="" onerror="this.src='https://via.placeholder.com/300?text=Gagal+Muat';">
+        <!-- Hapus onerror, tambahkan onerror ini yang aman -->
+<img src="${url}" onerror="this.src=''; this.style.display='none';" ... style="...">
     </div>
 
 </body>
@@ -2736,6 +2737,7 @@
     </body>
 
     </html>
+
 
 
 
