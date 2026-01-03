@@ -20,7 +20,7 @@
     <script src="https://meet.jit.si/external_api.js"></script>
   
    
-    <style>
+   <style>
     :root {
         --bg-base: #0a0a0a;
         --glass-white: rgba(255, 255, 255, 0.03);
@@ -61,27 +61,15 @@
     .search-box input { background: transparent; border: none; color: white; width: 100%; font-size: 14px; }
     
     #users { flex: 1; overflow-y: auto; padding: 10px; }
-    
-    /* --- USER (CONTACT) --- */
     .user { 
         padding: 14px; border-radius: 18px; display: flex; align-items: center; 
-        gap: 14px; cursor: pointer; margin-bottom: 8px; transition: 0.2s; position: relative;
-        
-        /* PENTING: TAMBAHKAN order: 0 AGAR STYLE.order JS BISA BEKERJA */
-        order: 0; 
+        gap: 14px; cursor: pointer; margin-bottom: 8px; transition: 0.2s; position: relative; 
     }
     .user:hover { background: var(--glass-white); }
     .user img { width: 52px; height: 52px; border-radius: 16px; object-fit: cover; }
     .user-info { flex: 1; min-width: 0; }
     .user-info b { display: block; font-size: 15px; color: #fff; margin-bottom: 2px; }
     .user-info span { font-size: 12px; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    
-    /* --- PINNED STATE (VISUAL ONLY) --- */
-    .user.pinned {
-        background: rgba(212, 163, 115, 0.12) !important;
-        border-left: 4px solid var(--accent) !important;
-        /* Jangan atur 'order' disini, biarkan .user { order: 0 } mengontrol posisi */
-    }
     
     .unread-badge { 
         background: var(--accent); color: #000; min-width: 20px; height: 20px; 
@@ -118,10 +106,13 @@
     }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* UPDATE: AGAR PESAN SAYA MIRIP TEMA TEMAN (PUTIH) */
+    /* --- UPDATE: AGAR PESAN SAYA MIRIP TEMA TEMAN (PUTIH) --- */
     .me .msg { 
+        /* Kita GUNAKAN style 'you' (Transparent & Teks Putih) */
         background: var(--you-chat); 
         color: white; 
+        
+        /* Opsional: Hilangkan border radius kiri biar rapi kaya teman */
         border-bottom-left-radius: 18px; 
     }
     .msg-meta { display: flex; align-items: center; gap: 4px; font-size: 10px; opacity: 0.7; margin-top: 4px; }
@@ -140,74 +131,72 @@
 
     /* --- MODIFIKASI DIMULAI DISINI --- */
     
-    /* 1. INPUT AREA (BASE: KHUSUS HP) */
+/* --- 1. INPUT AREA (BASE: KHUSUS HP) --- */
     .input-area { 
         padding: 10px 2px; /* Padding samping sangat tipis untuk HP */
         background: var(--bg-base); 
         border-top: 1px solid var(--glass-border); 
+        /* Padding bawah 30px agar tidak kepotong Home Bar */
         padding-bottom: calc(30px + env(safe-area-inset-bottom)); 
         position: relative;
         min-height: 60px; 
     }
 
-    /* 1. INPUT ROW (BASE: KHUSUS HP) */
+    /* --- 1. INPUT ROW (BASE: KHUSUS HP) --- */
     .input-row { 
         display: flex; 
         align-items: center; 
         gap: 4px; 
         background: var(--glass-white); 
-        padding: 10px 2px; 
+        padding: 10px 2px; /* Padding samping dijadikan 2px supaya benar-benar mepet */
         border-radius: 25px; 
         border: 1px solid var(--glass-border);
         min-height: 45px;
-        width: 100%; 
+        width: 100%; /* Pastikan lebar 100% */
     }
 
-    /* 2. RECORDING UI */
+    /* --- 2. RECORDING UI --- */
     #recording-ui {
         display: none; 
         align-items: center;
         justify-content: space-between;
         width: 100%; 
-        flex: 1; 
+        flex: 1; /* PENTING: Memaksa elemen ini mengisi sisa ruang kosong */
         background: transparent; 
-        padding: 0px 2px; 
+        padding: 0px 2px; /* Padding vertikal dan horizontal dijadikan 0/2px */
         border-radius: 12px;
         pointer-events: none; 
         position: relative;
         z-index: 10;
-        overflow: visible; 
-    }
-    
-    /* Trigger ketika JS style diubah */
-    #recording-ui[style*="display: flex"] {
-        pointer-events: auto;
+        overflow: visible; /* Supaya animasi bisa keluar dikit */
     }
 
-    /* 3. RECORD INFO (Timer Kiri) */
+    /* --- 3. RECORD INFO (Timer Kiri) --- */
     .record-info {
         color: #ff5e5e;
         display: flex;
         align-items: center;
         gap: 4px;
-        font-size: 11px; 
+        font-size: 11px; /* Dikit diperkecil lagi */
         font-weight: 600;
-        flex-shrink: 0; 
+        flex-shrink: 0; /* JANGAN DIKECILKAN otomatis, biarkan timer tetap utuh */
     }
 
-    /* 4. INSTRUKSI SLIDE (KANAN) */
+    /* --- 4. INSTRUKSI SLIDE (KANAN) --- */
     #slide-instruction {
         color: #888;
         font-size: 9px; 
         animation: slideLeft 1.5s infinite;
         display: flex;
         align-items: center;
-        justify-content: flex-end; 
+        justify-content: flex-end; /* Rata kanan */
         gap: 2px;
-        max-width: 45%; 
-        white-space: nowrap; 
-        overflow: hidden; 
-        text-overflow: ellipsis; 
+        
+        /* --- PENTING: INI YANG MENCEGAH KELEBARAN --- */
+        max-width: 45%; /* Batasi lebar maksimal hanya 45% layar HP */
+        white-space: nowrap; /* Jangan turun ke baris bawah */
+        overflow: hidden; /* Sembunyikan teks yang kepanjangan */
+        text-overflow: ellipsis; /* Tampilkan titik-titik (...) jika kepanjangan */
     }
 
     /* =========================================
@@ -221,238 +210,242 @@
 
         #slide-instruction {
             font-size: 13px;
-            max-width: 60%; 
-            white-space: nowrap; 
+            max-width: 60%; /* Di laptop boleh lebih lebar */
+            white-space: nowrap; /* Tetap satu baris */
         }
     }
         
-    #text { 
-        flex: 1; 
-        border: none; 
-        background: transparent; 
-        color: white; 
-        padding: 8px 2px; 
-        font-size: 16px; 
-    }
-    
-    .btn-action { 
-        background: none; 
-        border: none; 
-        color: var(--text-muted); 
-        font-size: 20px; 
-        cursor: pointer; 
-        margin: 0 2px;
-    }
+        #text { 
+            flex: 1; 
+            border: none; 
+            background: transparent; 
+            color: white; 
+            padding: 8px 2px; /* Padding atas bawah disesuaikan agar rapi */
+            font-size: 16px; /* Tetap 16px agar tidak zoom */
+        }
+        
+        .btn-action { 
+            background: none; 
+            border: none; 
+            color: var(--text-muted); 
+            font-size: 20px; 
+            cursor: pointer; 
+            /* Tambahkan sedikit margin agar tidak menempel tepi */
+            margin: 0 2px;
+        }
 
-    #emojiPanel {
-        display: none; position: absolute; bottom: 85px; left: 15px; right: 15px;
-        background: #161616; border: 1px solid var(--glass-border); border-radius: 20px;
-        padding: 15px; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px;
-        max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
-    }
-    .emoji-item { font-size: 24px; text-align: center; cursor: pointer; padding: 5px; border-radius: 10px; transition: 0.2s; }
-    .emoji-item:hover { background: var(--glass-white); }
-    
-    .recording-active { animation: pulse-red 1s infinite; color: #ff5e5e !important; }
-    @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        #emojiPanel {
+            display: none; position: absolute; bottom: 85px; left: 15px; right: 15px;
+            background: #161616; border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 15px; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px;
+            max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+        }
+        .emoji-item { font-size: 24px; text-align: center; cursor: pointer; padding: 5px; border-radius: 10px; transition: 0.2s; }
+        .emoji-item:hover { background: var(--glass-white); }
+        
+        .recording-active { animation: pulse-red 1s infinite; color: #ff5e5e !important; }
+        @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-    .btn-send { 
-        background: var(--accent); border: none; width: 38px; height: 38px; 
-        border-radius: 50%; color: black; cursor: pointer; 
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0; 
-    }
+        .btn-send { 
+            background: var(--accent); border: none; width: 38px; height: 38px; /* Dikit diperkecil */
+            border-radius: 50%; color: black; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; /* Mencegah tombol mengecil */
+        }
 
-    #toast { 
-        position: fixed; top: 40px; left: 50%; transform: translateX(-50%); 
-        background: var(--accent); color: black; padding: 10px 20px; 
-        border-radius: 20px; z-index: 9999; display: none; font-weight: bold; 
-    }
+        #toast { 
+            position: fixed; top: 40px; left: 50%; transform: translateX(-50%); 
+            background: var(--accent); color: black; padding: 10px 20px; 
+            border-radius: 20px; z-index: 9999; display: none; font-weight: bold; 
+        }
 
     .modal {
-        display: none; 
-        position: fixed; 
-        inset: 0; 
-        background: rgba(0,0,0,0.9); 
-        z-index: 3000; 
-        align-items: center; 
-        justify-content: center;
-        backdrop-filter: blur(5px);
-    }
-    .modal-content { 
-        background: #161616; padding: 30px; border-radius: 25px; 
-        width: 85%; max-width: 350px; text-align: center; border: 1px solid var(--glass-border);
-    }
-
-    @media (max-width: 768px) {
-        .sidebar { width: 100%; position: absolute; height: 100%; left: 0; top: 0; }
-        .sidebar.hidden { transform: translateX(-100%); }
-        .chat { width: 100%; }
-    }
-
-    /* Style untuk Menu Pilihan */
-    .msg-context-menu {
-        display: none; position: fixed; z-index: 2000;
-        background: #1a1a1a; border: 1px solid var(--glass-border);
-        border-radius: 15px; width: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-    .menu-item {
-        padding: 12px 15px; font-size: 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;
-    }
-    .menu-item:hover { background: var(--glass-white); color: var(--accent); }
-    .menu-item.danger { color: #ff5e5e; }
-
-    #reply-preview {
-        display: none; 
-        padding: 10px 12px; 
-        background: #1a1a1a; 
-        border-left: 4px solid var(--accent); 
-        border-top: 1px solid var(--glass-border);
-        margin: 0; 
-        position: absolute;
-        bottom: 100%; 
-        left: 0;
-        right: 0;
-        z-index: 5;
-        animation: slideUp 0.2s ease;
-    }
-
-    @keyframes slideUp {
-        from { transform: translateY(100%); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    .forward-tag { font-size: 10px; opacity: 0.6; font-style: italic; margin-bottom: 3px; }
-    
-    /* Action Sheet Hapus */
-    .action-sheet-overlay {
-        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-        z-index: 3000; align-items: flex-end;
-    }
-    .action-sheet {
-        width: 100%; background: #1a1a1a; border-top-left-radius: 20px; border-top-right-radius: 20px;
-        padding: 20px; animation: slideUp 0.3s ease-out;
-    }
-    .sheet-header { color: #888; text-align: center; margin-bottom: 15px; font-size: 14px; }
-    .sheet-btn {
-        width: 100%; padding: 15px; border: none; border-radius: 12px; margin-bottom: 10px;
-        font-size: 16px; font-weight: bold; cursor: pointer;
-    }
-    .sheet-btn.danger { background: #ff4757; color: white; }
-    .sheet-btn.cancel { background: #333; color: white; }
-
-    .user.pinned {
-        /* Duplicated style from above, ensure consistency */
-        background: rgba(212, 163, 115, 0.12) !important;
-        border-left: 4px solid var(--accent) !important;
-    }
-
-    .pin-icon {
-        color: var(--accent);
-        font-size: 11px;
-        margin-left: 6px;
-        transform: rotate(45deg);
-        display: inline-block;
-    } 
-
-    .context-menu {
-        position: fixed !important;
-        display: none;
-        background: #1a1a1a !important; 
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
-        width: 180px !important;
-        z-index: 9999999 !important; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
-        overflow: hidden !important;
-        padding: 5px 0 !important;
-    }
-
-    .context-menu-item {
-        padding: 12px 16px !important;
-        font-size: 14px !important;
-        color: #ffffff !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
-        cursor: pointer !important;
-        background: transparent !important;
-        transition: 0.2s;
-    }
-
-    .context-menu-item:hover {
-        background: rgba(255, 255, 255, 0.1) !important;
-    }
-
-    .context-menu-item i {
-        width: 20px !important;
-        text-align: center !important;
-        color: #d4af37 !important; 
-    }
-
-    .context-menu-item.danger {
-        color: #ff5e5e !important;
-    }
-
-    .context-menu-item.danger i {
-        color: #ff5e5e !important;
-    }
-
-    .blink {
-        animation: blink-red 1s infinite;
-    }
-
-    @keyframes blink-red {
-        0% { opacity: 1; }
-        50% { opacity: 0.2; }
-        100% { opacity: 1; }
-    }
-
-
-    @keyframes slideLeft {
-        0% { 
-            transform: translateX(0); 
-            opacity: 1; 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.9); 
+            z-index: 3000; 
+            align-items: center; 
+            justify-content: center;
+            backdrop-filter: blur(5px);
         }
-        100% { 
-            transform: translateX(-15px); 
-            opacity: 0.2; 
+        .modal-content { 
+            background: #161616; padding: 30px; border-radius: 25px; 
+            width: 85%; max-width: 350px; text-align: center; border: 1px solid var(--glass-border);
         }
-    }
 
-    #normal-input {
-        transition: all 0.2s ease;
-    }
-    .btn-action, #micButton {
-        cursor: pointer; 
-        user-select: none; 
-    }
-    
-    .vn-player {
-        max-width: 200px;
-        height: 35px;
-        border-radius: 20px;
-        filter: sepia(20%) saturate(70%) grayscale(1);
-    }
-    
-    .fa-users, .fa-user-plus {
-        position: relative;
-        z-index: 10;
-    }
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: absolute; height: 100%; left: 0; top: 0; }
+            .sidebar.hidden { transform: translateX(-100%); }
+            .chat { width: 100%; }
+        }
 
-    /* =========================================
-    MODAL VIDEO CALL (JITSI ONLY - GANTIKAN AGORA)
-    ========================================= */
+        /* Style untuk Menu Pilihan */
+        .msg-context-menu {
+            display: none; position: fixed; z-index: 2000;
+            background: #1a1a1a; border: 1px solid var(--glass-border);
+            border-radius: 15px; width: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .menu-item {
+            padding: 12px 15px; font-size: 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;
+        }
+        .menu-item:hover { background: var(--glass-white); color: var(--accent); }
+        .menu-item.danger { color: #ff5e5e; }
+
+        #reply-preview {
+            display: none; 
+            padding: 10px 12px; /* Padding dikit diperkecil */
+            background: #1a1a1a; 
+            border-left: 4px solid var(--accent); 
+            border-top: 1px solid var(--glass-border);
+            margin: 0; 
+            position: absolute;
+            bottom: 100%; 
+            left: 0;
+            right: 0;
+            z-index: 5;
+            animation: slideUp 0.2s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .forward-tag { font-size: 10px; opacity: 0.6; font-style: italic; margin-bottom: 3px; }
+        
+        /* Action Sheet Hapus */
+        .action-sheet-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            z-index: 3000; align-items: flex-end;
+        }
+        .action-sheet {
+            width: 100%; background: #1a1a1a; border-top-left-radius: 20px; border-top-right-radius: 20px;
+            padding: 20px; animation: slideUp 0.3s ease-out;
+        }
+        .sheet-header { color: #888; text-align: center; margin-bottom: 15px; font-size: 14px; }
+        .sheet-btn {
+            width: 100%; padding: 15px; border: none; border-radius: 12px; margin-bottom: 10px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+        .sheet-btn.danger { background: #ff4757; color: white; }
+        .sheet-btn.cancel { background: #333; color: white; }
+
+        .user.pinned {
+            background: rgba(212, 163, 115, 0.12) !important;
+            border-left: 4px solid var(--accent) !important;
+        }
+
+        .pin-icon {
+            color: var(--accent);
+            font-size: 11px;
+            margin-left: 6px;
+            transform: rotate(45deg);
+            display: inline-block;
+        } 
+
+        .context-menu {
+            position: fixed !important;
+            display: none;
+            background: #1a1a1a !important; 
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 12px !important;
+            width: 180px !important;
+            z-index: 9999999 !important; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
+            overflow: hidden !important;
+            padding: 5px 0 !important;
+        }
+
+        .context-menu-item {
+            padding: 12px 16px !important;
+            font-size: 14px !important;
+            color: #ffffff !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            cursor: pointer !important;
+            background: transparent !important;
+            transition: 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .context-menu-item i {
+            width: 20px !important;
+            text-align: center !important;
+            color: #d4af37 !important; 
+        }
+
+        .context-menu-item.danger {
+            color: #ff5e5e !important;
+        }
+
+        .context-menu-item.danger i {
+            color: #ff5e5e !important;
+        }
+
+        #recording-ui[style*="display: flex"] {
+            pointer-events: auto;
+        }
+
+        .blink {
+            animation: blink-red 1s infinite;
+        }
+
+        @keyframes blink-red {
+            0% { opacity: 1; }
+            50% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+
+        @keyframes slideLeft {
+            0% { 
+                transform: translateX(0); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translateX(-15px); 
+                opacity: 0.2; 
+            }
+        }
+
+        #normal-input {
+            transition: all 0.2s ease;
+        }
+        .btn-action, #micButton {
+            cursor: pointer; 
+            user-select: none; 
+        }
+        
+        .vn-player {
+            max-width: 200px;
+            height: 35px;
+            border-radius: 20px;
+            filter: sepia(20%) saturate(70%) grayscale(1);
+        }
+        
+        .fa-users, .fa-user-plus {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* =========================================
+        MODAL VIDEO CALL (JITSI ONLY - GANTIKAN AGORA)
+        ========================================= */
 
     /* 1. Modal Utama */
     #videoCallModal {
-        display: none; 
+        display: none; /* Hidden by default */
         position: fixed;
-        inset: 0; 
+        inset: 0; /* Sama seperti top:0; right:0; bottom:0; left:0; */
         background: #000;
-        z-index: 10000000; 
+        z-index: 10000000; /* Paling Atas (Agar menutupi semua) */
         width: 100%;
         height: 100%;
-        padding-top: env(safe-area-inset-top); 
+        padding-top: env(safe-area-inset-top); /* Safe Area iPhone */
         padding-bottom: env(safe-area-inset-bottom);
     }
 
@@ -460,18 +453,19 @@
     #jitsi-container {
         width: 100%;
         height: 100%;
-        display: none; 
+        display: none; /* Hidden saat tidak dipakai */
     }
 
-    /* =========================================
-    CALL OVERLAY (FULL SCREEN ANIMATION)
-    ========================================= */
+        /* =========================================
+        CALL OVERLAY (FULL SCREEN ANIMATION)
+        ========================================= */
     #call-overlay {
-        display: none; 
+        display: none; /* Hidden by default */
         position: fixed;
         inset: 0;
         background: #000;
-        z-index: 10000000; 
+        z-index: 10000000; /* Paling atas */
+        display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
@@ -536,7 +530,7 @@
     /* Tombol Action Bawah */
     .call-actions {
         position: absolute;
-        bottom: 60px; 
+        bottom: 60px; /* Naikkan sedikit jika di HP */
         display: flex;
         gap: 40px;
         z-index: 2;
@@ -579,7 +573,7 @@
     }
 
 
-</style>
+    </style>
 </head>
 <body>
 
@@ -2459,6 +2453,7 @@
     </body>
 
     </html>
+
 
 
 
