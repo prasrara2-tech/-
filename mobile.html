@@ -1759,7 +1759,7 @@
     document.getElementById("text").onkeydown = e => { if(e.key === "Enter") send(); };
     
     // --- LOGIC PLAY SOUND (SAMA SEPERTI SEBELUMNYA) ---
-    function playNotificationSound(type = 'message') {
+      function playNotificationSound(type = 'message') {
         const soundId = (type === 'ringtone') ? "ringtoneSound" : "notificationSound";
         const sound = document.getElementById(soundId);
         
@@ -1853,7 +1853,8 @@
             }, 600); 
         }, { passive: true });
 
-        element.addEventListener('touchmove', (e) {
+        // PERBAIKAN DI SINI: Tambahkan kurung kurawal { setelah (e)
+        element.addEventListener('touchmove', (e) => {
             if (!internalHoldTimer) return;
             
             const touch = e.touches[0];
@@ -1868,7 +1869,8 @@
 
         element.addEventListener('touchend', () => {
             clearTimeout(internalHoldTimer);
-            internalHeldTimer = null;
+            // PERBAIKAN DI SINI: internalHeldTimer -> internalHoldTimer
+            internalHoldTimer = null; 
         });
 
         element.addEventListener('touchcancel', () => {
@@ -2137,3 +2139,4 @@
     </body>
 
     </html>
+
