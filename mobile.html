@@ -808,88 +808,86 @@
         }
     }
 
-    async function initApp() {
-    console.log("🚀 [INIT] Starting App...");
-    
-    // 1. CEK USER & REDIRECT (JANGAN PAKE AWAIT)
-    // Ini harus JALAN SEKARANG, jangan ditunggu.
+function initApp() {
+    // --- DEBUG STEP 1: CHECK CURRENT USER ---
     const currentUser = localStorage.getItem("gochat_user");
+    
+    // Tampilkan Alert Step 1
+    alert("STEP 1: Check User\nUser: " + currentUser);
+
     if(!currentUser) {
-        // Jangan redirect ke index.html jika file ini index.html (akan looping)
-        // Kita biarkan kosong atau arahkan ke login jika ada
-        console.warn("User tidak ditemukan di LocalStorage.");
-        // window.location.href="login.html"; // Hapus ini jika tidak punya login.html
-        return; // STOP JALAN DISINI JIKA TIDAK ADA USER
+        alert("ERROR: User kosong. Stop.");
+        // Hapus redirect agar tidak looping
+        // window.location.href="index.html"; 
+        return;
     }
 
-    // 2. SETUP FIREBASE (LANSUNG JALAN)
-    // Jangan pakai 'await' di sini agar tidak stuck
+    // --- DEBUG STEP 2: FIREBASE INIT ---
     try {
+        // Periksa apakah variabel firebaseConfig sudah ada di atas?
+        // Jika belum, ganti configFirebase di bawah dengan punya Anda.
+        if (typeof firebaseConfig === 'undefined') {
+            alert("ERROR: Variabel firebaseConfig tidak ditemukan! Cek script config.");
+            return;
+        }
+
         firebase.initializeApp(firebaseConfig);
-        console.log("✅ Firebase Initialized");
-    } catch (e) {
-        console.error("❌ Firebase Init Error:", e);
-        return; // Stop jika firebase error
+        const db = firebase.database();
+        alert("STEP 2: Firebase Sukses");
+    } catch (error) {
+        alert("ERROR STEP 2: Firebase Gagal.\n" + error.message);
+        return;
     }
 
-    const db = firebase.database();
-
-    // 3. REQUEST NOTIFIKASI (DIBUNGKUS DALAM TRY CATCH, JANGAN AWAIT)
-    // Kita jalankan ini di "background" (Fire and Forget)
-    if ("Notification" in window && Notification.permission === "default") {
+    // --- DEBUG STEP 3: NOTIFIKASI (JANGAN DI AWAIT) ---
+    if ("Notification" in window) {
         Notification.requestPermission().then(permission => {
             if (permission === "granted") {
-                console.log("✅ Notifikasi Granted");
-                registerServiceWorker();
+                alert("STEP 3: Notifikasi Granted");
+                // Kita coba register sw.js, tapi pakai try-catch
+                try {
+                    navigator.serviceWorker.register('sw.js').then(() => {
+                        console.log("SW OK");
+                    }).catch(err => {
+                        console.warn("SW Error (aman diabaikan):", err);
+                    });
+                } catch(e) {}
             } else {
-                console.log("⚠️ Notifikasi Denied/Default");
-                const btn = document.getElementById("btnEnableNotif");
-                if(btn) btn.style.display = "block";
+                alert("STEP 3: Notifikasi " + permission);
             }
-        }).catch(e => {
-            console.warn("Gagal request notifikasi:", e);
-            const btn = document.getElementById("btnEnableNotif");
-            if(btn) btn.style.display = "block";
         });
-    } else if (Notification.permission === "granted") {
-        registerServiceWorker();
     }
-    
-    // 4. SETUP USER DATA (MUNGKIN INI SUMBER STUCK-nya)
-    // Kita gunakan .on() bukan .once().value() agar bisa update real-time
-    // Dan KITA JANGAN AWAIT proses ini.
+
+    // --- DEBUG STEP 4: SETUP USER DATA ---
     db.ref("users/" + currentUser).on("value", s => {
         const d = s.val();
+        
+        // Tampilkan Alert Step 4
+        // Hati-hati: jika data besar, alert bisa panjang. Kita ambil username saja.
+        alert("STEP 4: Listener User Aktif\nUsername: " + (d ? d.username : "Kosong"));
+
         if(d) {
             const nameEl = document.getElementById("myName");
             const photoEl = document.getElementById("myPhotos");
             if(nameEl) nameEl.innerText = d.username;
             if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
             
-            // Update status online (juga jangan di-await)
-            db.ref("users/" + currentUser + "/online").set(true);
-            db.ref("users/" + currentUser + "/lastSeen").set(Date.now());
-            
-            console.log("✅ User Data Loaded:", d.username);
+            db.ref("users/" + currentUser).update({ online: true, lastSeen: Date.now() });
         }
     });
 
-    // 5. SETUP DISCONNECT (JANGAN DI-AWAIT)
     db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
-    db.ref("users/" + currentPartnerId + "/lastSeen").onDisconnect().set(Date.now());
+    db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
 
-    // 6. LOAD CONTACTS (FUNGSI PENTING)
-    // Pastikan fungsi loadContacts() TIDAK PAKE 'await' di dalamnya
+    // --- DEBUG STEP 5: LOAD CONTACTS ---
+    // Pastikan fungsi loadContacts TIDAK memakai async/await di dalamnya
+    alert("STEP 5: Mulai Load Contacts");
     loadContacts();
-    
-    // 7. SETUP LAINNYA
     setupEmoji();
     setupTypingListener();
-    
-    // 8. UNLOCK AUDIO
     unlockAudioContext();
 
-    console.log("✅ [INIT] App initialization complete");
+    alert("STEP 6: Init Selesai. Aplikasi seharusnya sudah muncul.");
 }
 
     /* =========================================
