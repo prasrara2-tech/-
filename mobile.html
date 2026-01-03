@@ -719,12 +719,10 @@
     </div>
 
 </body>
-     <script>
+    <script>
     /* =========================================
-        CONFIG & CONSTANTS
+        CONFIG & INIT
         ========================================= */
-    // JANGAN PANGGIL INITIALIZE DI SINI!
-    // Kita panggil sekali saja di dalam fungsi initApp
     const firebaseConfig = {
         apiKey: "AIzaSyCEamepceiYZtcqlcRnRmFHe0smkGfu_A4",
         authDomain: "gochat-35172.firebaseapp.com",
@@ -734,12 +732,12 @@
         appId: "1:206571646434:web:4036d43695a00474499dbb",
         messagingSenderId: "206571646434"
     };
-    
-    // --- GLOBAL VARIABLES ---
-    let db;
-    let currentUser = localStorage.getItem("gochat_user");
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const currentUser = localStorage.getItem("gochat_user");
     const SECRET_KEY = "Global_Key_123";
     
+    // DOM Elements
     const contextMenu = document.getElementById('contextMenu');
     const menuOverlay = document.getElementById('menuOverlay');
     const micBtn = document.getElementById("micButton");
@@ -748,6 +746,7 @@
     const textInput = document.getElementById("text");
     const normalInput = document.querySelector(".input-area");
 
+    // Global Variables
     let currentChatId = null;
     let activeChatRef = null; 
     let currentPartnerId = null;
@@ -792,7 +791,6 @@
         ========================================= */
     async function requestNotificationPermission() {
         if (!("Notification" in window)) { alert("Browser ini tidak mendukung notifikasi desktop"); return; }
-        
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
             showToast("Notifikasi Diaktifkan!");
@@ -806,16 +804,10 @@
     async function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                // Pakai scope '/' agar jelas
-                const registration = await navigator.serviceWorker.register('sw.js', { scope: '/' });
-                console.log('✅ Service Worker terdaftar!', registration.scope);
-                if (registration.waiting) {
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-            } catch (err) {
-                // Jangan crash jika sw.js tidak ada atau error lain
-                console.warn('⚠️ Gagal registrasi SW:', err);
-            }
+                const registration = await navigator.serviceWorker.register('sw.js');
+                console.log('Service Worker terdaftar!', registration);
+                if (registration.waiting) { registration.waiting.postMessage({ type: 'SKIP_WAITING' }); }
+            } catch (err) { console.error('Gagal registrasi SW:', err); }
         }
     }
 
@@ -823,28 +815,14 @@
         INIT APP (FIXED VERSION)
         ========================================= */
     function initApp() {
-        // 1. CEK USER (Langsung, jangan await)
-        // Jangan redirect ke index.html jika ini index.html (nanti looping)
-        if(!currentUser) {
-            // Jangan me-redirect loop
-            // window.location.href="login.html"; 
-            console.warn("User tidak ditemukan (Kosong).");
-            return;
-        }
-
+        if(!currentUser) { console.warn("User Kosong."); return; }
+        
         console.log("🚀 [INIT] Starting App...");
 
         // 2. INITIALIZE FIREBASE (Hanya sekali di sini)
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            console.log("✅ Firebase Initialized");
-        } catch (error) {
-            console.error("❌ Gagal inisialisasi Firebase:", error);
-            alert("Gagal memuat aplikasi (Firebase Error).");
-            return;
-        }
-
+        // Note: firebase.initializeApp sudah dipanggil di luar, jadi tidak perlu lagi di sini
+        db = firebase.database();
+        
         // 3. REQUEST NOTIFIKASI (Fire & Forget, jangan await)
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission().then(permission => {
@@ -855,7 +833,6 @@
                     if(btn) btn.style.display = "block";
                 }
             }).catch(e => {
-                console.warn("Permintaan notifikasi otomatis diblokir.", e);
                 const btn = document.getElementById("btnEnableNotif");
                 if(btn) btn.style.display = "block";
             });
@@ -864,7 +841,6 @@
         }
 
         // 4. SETUP USER (Gunakan .on(), bukan .once() + await)
-        // Menggunakan listener lebih aman daripada one-time fetch saat init
         db.ref("users/" + currentUser).on("value", s => {
             const d = s.val();
             if(d) {
@@ -873,23 +849,20 @@
                 if(nameEl) nameEl.innerText = d.username;
                 if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
                 
-                // Update status online
                 db.ref("users/" + currentUser).update({ online: true, lastSeen: Date.now() });
             }
         });
 
-        // 5. SETUP DISCONNECT
         db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
         db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
 
-        // 6. LOAD CONTACTS (JANGAN PAKAI await DI SINI)
-        // Kita pastikan loadContacts tidak await apapun
+        // 5. LOAD CONTACTS (JANGAN PAKAI await DI SINI)
         console.log("📞 [INIT] Loading contacts...");
         loadContacts();
         setupEmoji();
         setupTypingListener();
         
-        // 7. AUDIO
+        // 6. AUDIO
         unlockAudioContext();
 
         console.log("✅ [INIT] App initialization complete");
@@ -902,11 +875,7 @@
         document.getElementById("createGroupModal").style.display = "flex"; 
         document.getElementById("groupNameInput").value = "";
     }
-
-    function closeCreateGroup() { 
-        document.getElementById("createGroupModal").style.display = "none"; 
-    }
-
+    function closeCreateGroup() { document.getElementById("createGroupModal").style.display = "none"; }
     function processCreateGroup() {
         const name = document.getElementById("groupNameInput").value.trim();
         if(!name) { showToast("Nama grup tidak boleh kosong!"); return; }
@@ -933,7 +902,6 @@
         document.getElementById("addFriendModal").style.display = "flex"; 
         document.getElementById("friendInput").value = "";
     }
-
     function closeAddFriend() { 
         document.getElementById("addFriendModal").style.display = "none"; 
     }
@@ -1010,7 +978,6 @@
             audio.play().then(() => { audio.pause(); audio.currentTime = 0; audioContextUnlocked = true; }).catch(e => {});
         }
     }
-
     document.addEventListener('click', unlockAudioContext, { once: true });
     document.addEventListener('touchstart', unlockAudioContext, { once: true });
 
@@ -1066,8 +1033,6 @@
             let activeIds = [];
 
             // 4. Loop data (Non-Async / Sync)
-            // PENTING: Kita gunakan .once() di sini, tapi JANGAN pakai Promise/await di dalam loop forEach.
-            // Kita simpan dulu ID-nya.
             const contactIds = [];
             snap.forEach(c => { 
                 const id = c.key;
@@ -1681,6 +1646,7 @@
         showToast("Mode Edit Aktif");
     }
 
+    // 1. Gambar Dipilih (Compress & Simpan ke Pending)
     async function sendImage(input) {
         if(!input.files[0]) return;
         console.log("Gambar dipilih. Mengompres...");
@@ -1703,6 +1669,7 @@
         };
     }
 
+    // 2. Tampilkan Modal Preview
     function showImagePreview(base64String) {
         const modal = document.getElementById("imgPreviewModal");
         const imgBox = document.getElementById("imgPreviewBox");
@@ -1710,6 +1677,7 @@
         modal.style.display = "flex";
     }
 
+    // 3. Batal Kirim
     function cancelSendImage() {
         pendingImageBase64 = null;
         document.getElementById("imgPreviewModal").style.display = "none";
@@ -1717,6 +1685,7 @@
         console.log("Preview dibatalkan.");
     }
 
+    // 4. Toggle View Once (UI Only)
     function toggleViewOnce() {
         isViewOnceEnabled = !isViewOnceEnabled;
         const icon = document.getElementById("viewOnceIcon");
@@ -1730,6 +1699,7 @@
         }
     }
 
+    // 5. Konfirmasi Kirim
     function confirmSendImage() {
         if (!pendingImageBase64) return;
         const msgObj = {
@@ -1761,11 +1731,13 @@
         const textInput = document.getElementById("text");
         if (!textInput || !currentChatId) return; 
         
+        // CEK 1: Jika ada gambar pending (Dari fitur Preview)
         if (pendingImageBase64) {
-            confirmSendImage();
+            confirmSendImage(); // Kirim gambar
             return;
         }
 
+        // CEK 2: Jika ada Voice Note
         const val = textInput.value.trim();
 
         if (typeof vnBlob !== 'undefined' && vnBlob) {
@@ -1791,6 +1763,7 @@
             return;
         }
 
+        // LOGIKA PESAN TEKS (Edit / Baru)
         if (typeof isEditing !== 'undefined' && isEditing) {
             if (!val) return;
             db.ref(`chats/${currentChatId}/${selectedMsgId}`).update({
@@ -1971,7 +1944,7 @@
         `;
 
         const menuWidth = 160;
-        const menuHeight = 50;
+        const menuHeight = 50; 
         let finalX = x;
         let finalY = y;
 
@@ -2203,5 +2176,5 @@
         document.getElementById('lightboxImg').src = '';
     }
 </script>
-    </body>
+</body>
 </html>
