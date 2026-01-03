@@ -892,7 +892,7 @@
         <div class="preview-content">
             <div style="font-size: 18px; font-weight: 600;">Lihat Gambar</div>
             <!-- Container Gambar Preview -->
-            <img id="imgPreviewBox" src="" alt="Preview">
+            <img id="imgPreviewBox" src="" alt="Preview" onerror="this.src=''; this.style.display='none';">
             
             <div class="preview-actions">
                 <!-- Toggle View Once -->
@@ -910,11 +910,11 @@
         </div>
     </div>
 
-            <!-- MODAL LIGHTBOX GAMBAR -->
+    <!-- MODAL LIGHTBOX GAMBAR (FIX INFINITE LOOP) -->
     <div id="imageLightbox" onclick="closeLightbox()">
         <div id="lightbox-close"><i class="fas fa-times"></i></div>
-        <!-- Hapus onerror, tambahkan onerror ini yang aman -->
-<img src="${url}" onerror="this.src=''; this.style.display='none';" ... style="...">
+        <img id="lightboxImg" src="" onerror="this.src=''; this.style.display='none';">
+        <div id="lightboxError" style="display:none; color:white; text-align:center;">Gagal memuat gambar</div>
     </div>
 
 </body>
@@ -2721,12 +2721,24 @@
         }
     }
 
-        function openLightbox(url) {
+          function openLightbox(url) {
         const modal = document.getElementById('imageLightbox');
         const img = document.getElementById('lightboxImg');
-        img.src = url;
+        const err = document.getElementById('lightboxError');
+        
         modal.style.display = 'flex';
-    }
+        img.style.display = 'block'; // Tampilkan gambar
+        err.style.display = 'none'; // Sembunyikan teks error
+        
+        img.src = url;
+
+        // Set listener khusus untuk gambar ini
+        img.onerror = function() {
+            img.style.display = 'none'; // Sembunyikan gambar
+            err.style.display = 'block'; // Tampilkan teks error
+            img.onerror = null; // Hapus listener agar tidak looping
+        };
+    }}
 
     function closeLightbox() {
         document.getElementById('imageLightbox').style.display = 'none';
@@ -2737,6 +2749,7 @@
     </body>
 
     </html>
+
 
 
 
