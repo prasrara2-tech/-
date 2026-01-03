@@ -64,6 +64,9 @@
     .user { 
         padding: 14px; border-radius: 18px; display: flex; align-items: center; 
         gap: 14px; cursor: pointer; margin-bottom: 8px; transition: 0.2s; position: relative; 
+        display: flex;
+        flex-direction: column; 
+    
     }
     .user:hover { background: var(--glass-white); }
     .user img { width: 52px; height: 52px; border-radius: 16px; object-fit: cover; }
@@ -1154,7 +1157,7 @@
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-        function loadContacts() {
+    function loadContacts() {
         console.log("[LOAD] Memuat contacts...");
         
         // 1. MATIKAN LISTENER LAMA
@@ -2413,6 +2416,7 @@
     </body>
 
     </html>
+
 
 
 
