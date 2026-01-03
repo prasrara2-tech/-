@@ -109,7 +109,7 @@ self.addEventListener('fetch', (event) => {
       return cachedResponse || fetchPromise;
     })
   );
-});
+
 
 // --- 4. HANDLE MESSAGE (POSTMESSAGE DARI JS) ---
 self.addEventListener('message', (event) => {
@@ -184,4 +184,5 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
 
