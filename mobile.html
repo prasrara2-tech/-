@@ -719,10 +719,12 @@
     </div>
 
 </body>
-        <script>
+     <script>
     /* =========================================
-        CONFIG & INIT
+        CONFIG & CONSTANTS
         ========================================= */
+    // JANGAN PANGGIL INITIALIZE DI SINI!
+    // Kita panggil sekali saja di dalam fungsi initApp
     const firebaseConfig = {
         apiKey: "AIzaSyCEamepceiYZtcqlcRnRmFHe0smkGfu_A4",
         authDomain: "gochat-35172.firebaseapp.com",
@@ -732,12 +734,12 @@
         appId: "1:206571646434:web:4036d43695a00474499dbb",
         messagingSenderId: "206571646434"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const currentUser = localStorage.getItem("gochat_user");
+    
+    // --- GLOBAL VARIABLES ---
+    let db;
+    let currentUser = localStorage.getItem("gochat_user");
     const SECRET_KEY = "Global_Key_123";
     
-    // DOM Elements
     const contextMenu = document.getElementById('contextMenu');
     const menuOverlay = document.getElementById('menuOverlay');
     const micBtn = document.getElementById("micButton");
@@ -746,7 +748,6 @@
     const textInput = document.getElementById("text");
     const normalInput = document.querySelector(".input-area");
 
-    // Global Variables
     let currentChatId = null;
     let activeChatRef = null; 
     let currentPartnerId = null;
@@ -786,8 +787,12 @@
     window.addEventListener('focus', () => { isWindowFocused = true; });
     window.addEventListener('blur', () => { isWindowFocused = false; });
 
+    /* =========================================
+        NOTIFICATION & SERVICE WORKER
+        ========================================= */
     async function requestNotificationPermission() {
         if (!("Notification" in window)) { alert("Browser ini tidak mendukung notifikasi desktop"); return; }
+        
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
             showToast("Notifikasi Diaktifkan!");
@@ -801,127 +806,156 @@
     async function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('sw.js');
-                console.log('Service Worker terdaftar!', registration);
-                if (registration.waiting) { registration.waiting.postMessage({ type: 'SKIP_WAITING' }); }
-            } catch (err) { console.error('Gagal registrasi SW:', err); }
+                // Pakai scope '/' agar jelas
+                const registration = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+                console.log('✅ Service Worker terdaftar!', registration.scope);
+                if (registration.waiting) {
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            } catch (err) {
+                // Jangan crash jika sw.js tidak ada atau error lain
+                console.warn('⚠️ Gagal registrasi SW:', err);
+            }
         }
     }
 
-function initApp() {
-    // --- DEBUG STEP 1: CHECK CURRENT USER ---
-    const currentUser = localStorage.getItem("gochat_user");
-    
-    // Tampilkan Alert Step 1
-    alert("STEP 1: Check User\nUser: " + currentUser);
-
-    if(!currentUser) {
-        alert("ERROR: User kosong. Stop.");
-        // Hapus redirect agar tidak looping
-        // window.location.href="index.html"; 
-        return;
-    }
-
-    // --- DEBUG STEP 2: FIREBASE INIT ---
-    try {
-        // Periksa apakah variabel firebaseConfig sudah ada di atas?
-        // Jika belum, ganti configFirebase di bawah dengan punya Anda.
-        if (typeof firebaseConfig === 'undefined') {
-            alert("ERROR: Variabel firebaseConfig tidak ditemukan! Cek script config.");
+    /* =========================================
+        INIT APP (FIXED VERSION)
+        ========================================= */
+    function initApp() {
+        // 1. CEK USER (Langsung, jangan await)
+        // Jangan redirect ke index.html jika ini index.html (nanti looping)
+        if(!currentUser) {
+            // Jangan me-redirect loop
+            // window.location.href="login.html"; 
+            console.warn("User tidak ditemukan (Kosong).");
             return;
         }
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        alert("STEP 2: Firebase Sukses");
-    } catch (error) {
-        alert("ERROR STEP 2: Firebase Gagal.\n" + error.message);
-        return;
-    }
+        console.log("🚀 [INIT] Starting App...");
 
-    // --- DEBUG STEP 3: NOTIFIKASI (JANGAN DI AWAIT) ---
-    if ("Notification" in window) {
-        Notification.requestPermission().then(permission => {
-            if (permission === "granted") {
-                alert("STEP 3: Notifikasi Granted");
-                // Kita coba register sw.js, tapi pakai try-catch
-                try {
-                    navigator.serviceWorker.register('sw.js').then(() => {
-                        console.log("SW OK");
-                    }).catch(err => {
-                        console.warn("SW Error (aman diabaikan):", err);
-                    });
-                } catch(e) {}
-            } else {
-                alert("STEP 3: Notifikasi " + permission);
+        // 2. INITIALIZE FIREBASE (Hanya sekali di sini)
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            console.log("✅ Firebase Initialized");
+        } catch (error) {
+            console.error("❌ Gagal inisialisasi Firebase:", error);
+            alert("Gagal memuat aplikasi (Firebase Error).");
+            return;
+        }
+
+        // 3. REQUEST NOTIFIKASI (Fire & Forget, jangan await)
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    registerServiceWorker();
+                } else {
+                    const btn = document.getElementById("btnEnableNotif");
+                    if(btn) btn.style.display = "block";
+                }
+            }).catch(e => {
+                console.warn("Permintaan notifikasi otomatis diblokir.", e);
+                const btn = document.getElementById("btnEnableNotif");
+                if(btn) btn.style.display = "block";
+            });
+        } else if (Notification.permission === "granted") {
+            registerServiceWorker();
+        }
+
+        // 4. SETUP USER (Gunakan .on(), bukan .once() + await)
+        // Menggunakan listener lebih aman daripada one-time fetch saat init
+        db.ref("users/" + currentUser).on("value", s => {
+            const d = s.val();
+            if(d) {
+                const nameEl = document.getElementById("myName");
+                const photoEl = document.getElementById("myPhotos");
+                if(nameEl) nameEl.innerText = d.username;
+                if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                
+                // Update status online
+                db.ref("users/" + currentUser).update({ online: true, lastSeen: Date.now() });
             }
         });
+
+        // 5. SETUP DISCONNECT
+        db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
+        db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
+
+        // 6. LOAD CONTACTS (JANGAN PAKAI await DI SINI)
+        // Kita pastikan loadContacts tidak await apapun
+        console.log("📞 [INIT] Loading contacts...");
+        loadContacts();
+        setupEmoji();
+        setupTypingListener();
+        
+        // 7. AUDIO
+        unlockAudioContext();
+
+        console.log("✅ [INIT] App initialization complete");
     }
 
-    // --- DEBUG STEP 4: SETUP USER DATA ---
-    db.ref("users/" + currentUser).on("value", s => {
-        const d = s.val();
-        
-        // Tampilkan Alert Step 4
-        // Hati-hati: jika data besar, alert bisa panjang. Kita ambil username saja.
-        alert("STEP 4: Listener User Aktif\nUsername: " + (d ? d.username : "Kosong"));
-
-        if(d) {
-            const nameEl = document.getElementById("myName");
-            const photoEl = document.getElementById("myPhotos");
-            if(nameEl) nameEl.innerText = d.username;
-            if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-            
-            db.ref("users/" + currentUser).update({ online: true, lastSeen: Date.now() });
-        }
-    });
-
-    db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
-    db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
-
-    // --- DEBUG STEP 5: LOAD CONTACTS ---
-    // Pastikan fungsi loadContacts TIDAK memakai async/await di dalamnya
-    alert("STEP 5: Mulai Load Contacts");
-    loadContacts();
-    setupEmoji();
-    setupTypingListener();
-    unlockAudioContext();
-
-    alert("STEP 6: Init Selesai. Aplikasi seharusnya sudah muncul.");
-}
-
     /* =========================================
-        GROUP & FRIENDS
+        FUNGSI GROUP
         ========================================= */
     function openCreateGroup() { 
         document.getElementById("createGroupModal").style.display = "flex"; 
         document.getElementById("groupNameInput").value = "";
     }
-    function closeCreateGroup() { document.getElementById("createGroupModal").style.display = "none"; }
+
+    function closeCreateGroup() { 
+        document.getElementById("createGroupModal").style.display = "none"; 
+    }
+
     function processCreateGroup() {
         const name = document.getElementById("groupNameInput").value.trim();
         if(!name) { showToast("Nama grup tidak boleh kosong!"); return; }
+
         const groupId = "GROUP_" + Date.now();
         const groupData = { id: groupId, name: name, admin: currentUser, photo: "https://cdn-icons-png.flaticon.com/512/615/615075.png", createdAt: Date.now() };
+
         db.ref("groups/" + groupId).set(groupData);
         db.ref(`group_members/${groupId}/${currentUser}`).set(true);
-        db.ref(`user_chats/${currentUser}/${groupId}`).set({ lastMsg: "Grup baru dibuat", time: Date.now() }).then(() => {
-            showToast("Grup '" + name + "' berhasil dibuat!"); closeCreateGroup();
+        
+        db.ref(`user_chats/${currentUser}/${groupId}`).set({
+            lastMsg: "Grup baru dibuat",
+            time: Date.now()
+        }).then(() => {
+            showToast("Grup '" + name + "' berhasil dibuat!");
+            closeCreateGroup();
         });
     }
-    function openAddFriend() { document.getElementById("addFriendModal").style.display = "flex"; document.getElementById("friendInput").value = ""; }
-    function closeAddFriend() { document.getElementById("addFriendModal").style.display = "none"; }
+
+    /* =========================================
+        FUNGSI ADD FRIEND
+        ========================================= */
+    function openAddFriend() { 
+        document.getElementById("addFriendModal").style.display = "flex"; 
+        document.getElementById("friendInput").value = "";
+    }
+
+    function closeAddFriend() { 
+        document.getElementById("addFriendModal").style.display = "none"; 
+    }
+
     function processAddFriend() {
         const id = document.getElementById("friendInput").value.trim();
         if(!id) { showToast("ID Teman tidak boleh kosong!"); return; }
         if(id === currentUser) { showToast("Tidak bisa menambahkan diri sendiri!"); return; }
+
         db.ref("users/" + id).once("value", s => {
             if(s.exists()) {
+                // Update saya
                 db.ref(`user_chats/${currentUser}/${id}`).update({ lastMsg: "Kontak baru", time: Date.now() });
-                db.ref(`user_chats/${id}/${currentUser}`).update({ lastMsg: "Permintaan pertemanan baru", time: Date.now() }).then(() => {
-                    showToast("Berhasil menambahkan teman!"); closeAddFriend();
+                // Update teman
+                db.ref(`user_chats/${id}/${currentUser}`).update({ lastMsg: "Permintaan pertemanan baru", time: Date.now() })
+                .then(() => {
+                    showToast("Berhasil menambahkan teman!");
+                    closeAddFriend();
                 });
-            } else { alert("ID User '" + id + "' tidak ditemukan!"); }
+            } else {
+                alert("ID User '" + id + "' tidak ditemukan!");
+            }
         });
     }
 
@@ -938,6 +972,7 @@ function initApp() {
             typingTimeout = setTimeout(() => { db.ref(`typing/${currentChatId}/${currentUser}`).remove(); }, 2000);
         });
     }
+
     function watchTyping(chatId) {
         db.ref(`typing/${chatId}`).on("value", snap => {
             const typers = snap.val();
@@ -958,6 +993,7 @@ function initApp() {
             }
         });
     }
+
     function updatePartnerOnlineStatus() {
         db.ref("users/" + currentPartnerId).once("value", s => {
             const u = s.val();
@@ -966,6 +1002,7 @@ function initApp() {
             st.style.color = u?.online ? "var(--online)" : "var(--text-muted)";
         });
     }
+
     function unlockAudioContext() {
         if (audioContextUnlocked) return;
         const audio = document.getElementById('notificationSound');
@@ -973,6 +1010,7 @@ function initApp() {
             audio.play().then(() => { audio.pause(); audio.currentTime = 0; audioContextUnlocked = true; }).catch(e => {});
         }
     }
+
     document.addEventListener('click', unlockAudioContext, { once: true });
     document.addEventListener('touchstart', unlockAudioContext, { once: true });
 
@@ -1002,141 +1040,146 @@ function initApp() {
     }
 
     /* =========================================
-        CONTACTS & LIST
+        LOAD CONTACTS (FIXED NON-ASYNC)
         ========================================= */
     function loadContacts() {
         console.log("[LOAD] Memuat contacts...");
-        if (contactsListener) { db.ref(`user_chats/${currentUser}`).off('value', contactsListener); }
+        
+        // 1. Matikan listener lama
+        if (contactsListener) {
+            db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
+        }
+
+        // 2. Matikan listeners spesifik
         for (const id in chatListeners) {
             if (chatListeners[id].badge) { chatListeners[id].badge.off(); }
             if (chatListeners[id].notif) { chatListeners[id].notif.off(); }
         }
         chatListeners = {};
 
-        const newListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
+        // 3. Listener Utama (ONCE) - Hapus await di dalamnya agar Chrome tidak menunggu
+        const newListener = db.ref(`user_chats/${currentUser}`).once("value", (snap) => {
             const list = document.getElementById("users");
             list.innerHTML = ""; 
+
             let items = [];
             let activeIds = [];
-            const promises = [];
-            
+
+            // 4. Loop data (Non-Async / Sync)
+            // PENTING: Kita gunakan .once() di sini, tapi JANGAN pakai Promise/await di dalam loop forEach.
+            // Kita simpan dulu ID-nya.
+            const contactIds = [];
             snap.forEach(c => { 
                 const id = c.key;
                 const info = c.val();
                 if(!info) return;
                 activeIds.push(id);
-
-                const p = new Promise((resolve) => {
-                    const isGrp = id.startsWith("GROUP_");
-                    const refPath = isGrp ? "groups/" + id : "users/" + id;
-                    const chatId = isGrp ? id : [currentUser, id].sort().join("_");
-                    
-                    db.ref(refPath).once("value", uSnap => {
-                        const u = uSnap.val();
-                        resolve({ id: id, info: info, isGrp: isGrp, u: u, chatId: chatId });
-                    });
-                });
-                promises.push(p);
+                contactIds.push(id);
             });
 
-            const results = await Promise.all(promises);
+            // 5. Fetch Data User/Grup untuk setiap ID
+            // Kita tidak pakai Promise.all agar tidak ada tunggu.
+            contactIds.forEach(id => {
+                const isGrp = id.startsWith("GROUP_");
+                const refPath = isGrp ? "groups/" + id : "users/" + id;
+                const chatId = isGrp ? id : [currentUser, id].sort().join("_");
+                const info = snap.val()[id]; // Ambil info dari snap utama
 
-            results.forEach(item => {
-                const id = item.id;
-                const chatId = item.chatId;
                 if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
 
-                if (!chatListeners[id].badge) {
-                    const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
-                    const badgeHandler = (unreadSnap) => {
-                        let count = 0;
-                        unreadSnap.forEach(child => { 
-                            const m = child.val();
-                            if (!m) return; 
-                            if(m.from !== currentUser) count++; 
-                        });
-                        const currentEl = document.getElementById(`contact-${id}`);
-                        if(currentEl) {
-                            let badgeEl = currentEl.querySelector('.unread-badge');
-                            if(count > 0) {
-                                if(!badgeEl) { badgeEl = document.createElement("div"); badgeEl.className = "unread-badge"; currentEl.appendChild(badgeEl); }
-                                badgeEl.innerText = count;
-                            } else { if(badgeEl) badgeEl.remove(); }
+                // --- AMBIL DATA PROFIL (ONCE) ---
+                db.ref(refPath).once("value", uSnap => {
+                    const u = uSnap.val();
+                    if(u) {
+                        // --- RENDER ITEM ---
+                        let div = document.createElement("div");
+                        div.id = `contact-${id}`; 
+                        div.className = `user`; 
+                        div.onclick = (e) => {
+                            if (e.target.tagName !== 'IMG') { 
+                                openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
+                            }
+                        };
+                        
+                        div.innerHTML = `
+                            <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
+                                 onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
+                                 style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
+                            <div class="user-info">
+                                <b>${u?.name || u?.username || id}</b>
+                                <span>${info?.lastMsg || '...'}</span>
+                            </div>
+                        `;
+                        setupHoldListener(div, id);
+                        list.appendChild(div);
+
+                        // --- SETUP LISTENER BADGE & NOTIF ---
+                        // Badge Listener
+                        if (!chatListeners[id].badge) {
+                            const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
+                            const badgeHandler = (unreadSnap) => {
+                                let count = 0;
+                                unreadSnap.forEach(child => { 
+                                    const m = child.val();
+                                    if (!m) return; 
+                                    if(m.from !== currentUser) count++; 
+                                });
+                                const currentEl = document.getElementById(`contact-${id}`);
+                                if(currentEl) {
+                                    let badgeEl = currentEl.querySelector('.unread-badge');
+                                    if(count > 0) {
+                                        if(!badgeEl) { badgeEl = document.createElement("div"); badgeEl.className = "unread-badge"; currentEl.appendChild(badgeEl); }
+                                        badgeEl.innerText = count;
+                                    } else { if(badgeEl) badgeEl.remove(); }
+                                }
+                            };
+                            unreadRef.on("value", badgeHandler);
+                            chatListeners[id].badge = unreadRef; 
                         }
-                    };
-                    unreadRef.on("value", badgeHandler);
-                    chatListeners[id].badge = unreadRef; 
-                }
-                
-                if (!chatListeners[id].notif) {
-                    const notifRef = db.ref("chats/" + chatId).limitToLast(20);
-                    const notifHandler = (msgSnap) => {
-                        const m = msgSnap.val();
-                        if (!m || !m.text) return;
-                        if (m.from === currentUser) return;
-                        if (m.deleted) return;
-                        if ((Date.now() - m.time) > 20000) return;
-                        if (currentChatId === chatId) return;
+                        
+                        // Notif Listener
+                        if (!chatListeners[id].notif) {
+                            const notifRef = db.ref("chats/" + chatId).limitToLast(20);
+                            const notifHandler = (msgSnap) => {
+                                const m = msgSnap.val();
+                                if (!m || !m.text) return;
+                                if (m.from === currentUser) return;
+                                if (m.deleted) return;
+                                if ((Date.now() - m.time) > 20000) return;
+                                if (currentChatId === chatId) return;
 
-                        const isGrp = item.isGrp;
-                        let notifTitle = isGrp ? (item.u?.name || "Grup") : (item.u?.username || "Teman");
-                        let notifBody = "";
-                        let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
-                        let soundType = 'message';
+                                let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                let notifBody = "";
+                                let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
+                                let soundType = 'message';
 
-                        if (m.text.startsWith("CALL_JITSI:")) {
-                            const p = m.text.split(":");
-                            const callType = p[1]; 
-                            const roomName = p[2];
-                            notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
-                            notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
-                            soundType = 'ringtone';
-                            showCallOverlay(roomName, callType, notifTitle, item.u?.photo);
-                        } else if (m.text.startsWith("IMG:")) {
-                            notifBody = "📷 Mengirim Gambar...";
-                        } else if (m.text.startsWith("TYPE:VN:")) {
-                            notifBody = "🎤 Mengirim Voice Note...";
-                            notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; 
-                        } else {
-                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                                if (m.text.startsWith("CALL_JITSI:")) {
+                                    const p = m.text.split(":");
+                                    const callType = p[1]; 
+                                    const roomName = p[2];
+                                    notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
+                                    notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
+                                    soundType = 'ringtone';
+                                    showCallOverlay(roomName, callType, notifTitle, u?.photo);
+                                } else if (m.text.startsWith("IMG:")) {
+                                    notifBody = "📷 Mengirim Gambar...";
+                                } else if (m.text.startsWith("TYPE:VN:")) {
+                                    notifBody = "🎤 Mengirim Voice Note...";
+                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; 
+                                } else {
+                                    try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                                }
+                                playNotificationSound(soundType);
+                                showBrowserNotification(notifTitle, notifBody, notifIcon, `chat_${chatId}`);
+                            };
+                            notifRef.on("child_added", notifHandler);
+                            chatListeners[id].notif = notifRef;
                         }
-                        playNotificationSound(soundType);
-                        showBrowserNotification(notifTitle, notifBody, notifIcon, `chat_${chatId}`);
-                    };
-                    notifRef.on("child_added", notifHandler);
-                    chatListeners[id].notif = notifRef;
-                }
-            });
-
-            results.sort((a, b) => b.info.time - a.info.time);
-
-            results.forEach(item => {
-                const id = item.id;
-                const u = item.u;
-                const isGrp = item.isGrp;
-                
-                let div = document.createElement("div");
-                div.id = `contact-${id}`; 
-                div.className = `user`; 
-                div.onclick = (e) => {
-                    if (e.target.tagName !== 'IMG') { 
-                        openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
                     }
-                };
-                
-                div.innerHTML = `
-                    <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
-                         onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
-                         style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
-                    <div class="user-info">
-                        <b>${u?.name || u?.username || id}</b>
-                        <span>${item.info.lastMsg || '...'}</span>
-                    </div>
-                `;
-                setupHoldListener(div, id);
-                list.appendChild(div);
+                });
             });
 
+            // 6. HAPUS KONTAK TIDAK AKTIF
             const existingDivs = document.querySelectorAll('.user');
             existingDivs.forEach(div => {
                 const divId = div.id.replace('contact-', '');
@@ -1168,24 +1211,27 @@ function initApp() {
         overlay.style.display = "flex";
         playNotificationSound('ringtone');
     }
+
     function hideCallOverlay() {
         document.getElementById("call-overlay").style.display = "none";
         const ringtone = document.getElementById("ringtoneSound");
         if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
     }
+
     function acceptCall() {
         if (currentCallRoom && currentCallType) {
             hideCallOverlay();
             joinVideoCall(currentCallRoom, currentCallType);
         }
     }
+
     function rejectCall() {
         hideCallOverlay();
         showToast("Panggilan ditolak");
     }
 
     /* =========================================
-        MESSAGING CORE & VIEW ONCE
+        MESSAGING CORE
         ========================================= */
     function openChat(pId, photo, name, grp = false) {
         if (activeChatRef) { activeChatRef.off(); }
@@ -1196,7 +1242,7 @@ function initApp() {
         currentPartnerId = pId;
         isGroup = grp;
         currentChatId = grp ? pId : [currentUser, pId].sort().join("_");
-        viewOnceIgnoredKey = null; // Reset flag
+        viewOnceIgnoredKey = null;
         selectedMsgId = null;
         selectedMsgData = null;
 
@@ -1215,7 +1261,6 @@ function initApp() {
         const msgsDiv = document.getElementById("msgs");
         msgsDiv.innerHTML = "";
 
-        // Listener pesan baru
         activeChatRef.on("child_added", snap => {
             const m = snap.val();
             if(!m) return;
@@ -1227,18 +1272,13 @@ function initApp() {
             }
         });
 
-        // Listener perubahan pesan (PENTING UNTUK VIEW ONCE)
         activeChatRef.on("child_changed", snap => {
             const key = snap.key;
-            
-            // LOGIKA VIEW ONCE: Jangan render ulang jika ini adalah pesan yang baru saja kita "buka"
             if (key === viewOnceIgnoredKey) {
-                viewOnceIgnoredKey = null; // Reset flag
+                viewOnceIgnoredKey = null;
                 console.log("[VIEW ONCE] Menghindari auto-render delete.");
-                return; // KELUAR
+                return;
             }
-
-            // Render ulang pesan biasa (misal: edit pesan, atau pesan lain)
             const oldMsg = document.getElementById("msg-wrap-" + key);
             if(oldMsg) {
                 oldMsg.remove();
@@ -1346,12 +1386,7 @@ function initApp() {
 
         let content = "";
         if (m.deleted) {
-            // Jika deleted dan text berisi "Foto telah dibuka"
-            if (m.text.includes("Foto telah dibuka") || m.text.includes("👁️ Foto telah dibuka")) {
-                content = `<div class="view-once-opened-text"><i class="fas fa-eye-slash"></i> Foto telah dibuka</div>`;
-            } else {
-                content = `<div class="msg deleted" style="font-style:italic; opacity:0.7;">🚫 Pesan telah dihapus</div>`;
-            }
+            content = `<div class="msg deleted" style="font-style:italic; opacity:0.7;">🚫 Pesan telah dihapus</div>`;
         } else {
             let textBody = "";
             try {
@@ -1368,12 +1403,7 @@ function initApp() {
                             </div>
                         `;
                     } else if (m.viewOnce) {
-                        // --- LOGIKA VIEW ONCE (DIPERBARUI) ---
-                        // Jika saya pengirim (isMe): Saya tidak bisa melihatnya.
-                        // Jika saya penerima (!isMe): Saya bisa melihatnya (klik).
-                        
                         if (isMe) {
-                            // Tampilan untuk PENGIRIM (Icon + Teks)
                             textBody = `
                                 <div class="view-once-opened-text">
                                     <i class="fas fa-eye-slash"></i> 
@@ -1384,7 +1414,6 @@ function initApp() {
                                 </div>
                             `;
                         } else {
-                            // Tampilan untuk PENERIMA (Blur + Overlay Klik)
                             textBody = `
                                 <div class="view-once-blur" onclick="openViewOnceMessage('${key}')">
                                     <img src="${url}">
@@ -1397,7 +1426,6 @@ function initApp() {
                             `;
                         }
                     } else {
-                        // Tampilan Gambar Normal
                         textBody = `<img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
                     }
                 } else if (m.text.startsWith("TYPE:VN:")) {
@@ -1471,12 +1499,11 @@ function initApp() {
     }
 
     /* =========================================
-        OPEN VIEW ONCE MESSAGE (UPDATE)
+        OPEN VIEW ONCE MESSAGE
         ========================================= */
     function openViewOnceMessage(key) {
         if (!currentChatId) return;
 
-        // 1. Ambil data pesan dari DB
         db.ref("chats/" + currentChatId + "/" + key).once("value", snap => {
             const m = snap.val();
             if (!m || !m.viewOnce) return;
@@ -1485,10 +1512,8 @@ function initApp() {
             if (msgEl) {
                 const url = decryptData(m.text.replace("IMG:", ""));
                 
-                // 2. UPDATE VISUAL TAMPILAN (Tunjukkan gambar jernih)
                 const contentDiv = msgEl.querySelector('.msg');
                 if (contentDiv) {
-                    // Tampilkan gambar jernih di dalam chat sebentar
                     contentDiv.innerHTML = `
                         <img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">
                         <div style="font-size:10px; text-align:center; opacity:0.6; margin-top:5px;">Gambar telah dilihat</div>
@@ -1496,7 +1521,6 @@ function initApp() {
                         ${m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : ""}
                     `;
                     
-                    // Hapus style blur/overlay jika ada
                     if (msgEl.querySelector('.view-once-blur')) {
                         const blurWrap = msgEl.querySelector('.view-once-blur');
                         blurWrap.classList.remove('view-once-blur'); 
@@ -1505,13 +1529,10 @@ function initApp() {
                     }
                 }
 
-                // 3. SET FLAG AGAR LISTENER TIDAK MENGHAPUS
                 viewOnceIgnoredKey = key;
 
-                // 4. HAPUS PESAN DARI DATABASE (GANTI TEXT)
                 db.ref("chats/" + currentChatId + "/" + key).update({
                     deleted: true,
-                    // PERUBAHAN DISINI: Teks diganti jadi indikator "Foto telah dibuka"
                     text: encryptData("👁️ Foto telah dibuka"),
                     replyTo: null,
                     forwarded: null,
@@ -1558,7 +1579,7 @@ function initApp() {
     function closeDeleteSheet() { document.getElementById("deleteSheet").style.display = "none"; }
 
     /* =========================================
-        SEND FUNCTIONS & IMAGE PREVIEW
+        SEND FUNCTIONS
         ========================================= */
     function openContextMenu(e, key, data) {
         if(data.deleted) return;
@@ -1621,6 +1642,7 @@ function initApp() {
     }
 
     function closeForwardModal() { document.getElementById("forwardModal").style.display = "none"; }
+
     function handleCopy() {
         const txt = decryptData(selectedMsgData.text);
         navigator.clipboard.writeText(txt);
@@ -1659,7 +1681,6 @@ function initApp() {
         showToast("Mode Edit Aktif");
     }
 
-    // 1. Gambar Dipilih (Compress & Simpan ke Pending)
     async function sendImage(input) {
         if(!input.files[0]) return;
         console.log("Gambar dipilih. Mengompres...");
@@ -1682,7 +1703,6 @@ function initApp() {
         };
     }
 
-    // 2. Tampilkan Modal Preview
     function showImagePreview(base64String) {
         const modal = document.getElementById("imgPreviewModal");
         const imgBox = document.getElementById("imgPreviewBox");
@@ -1690,7 +1710,6 @@ function initApp() {
         modal.style.display = "flex";
     }
 
-    // 3. Batal Kirim
     function cancelSendImage() {
         pendingImageBase64 = null;
         document.getElementById("imgPreviewModal").style.display = "none";
@@ -1698,7 +1717,6 @@ function initApp() {
         console.log("Preview dibatalkan.");
     }
 
-    // 4. Toggle View Once (UI Only)
     function toggleViewOnce() {
         isViewOnceEnabled = !isViewOnceEnabled;
         const icon = document.getElementById("viewOnceIcon");
@@ -1712,7 +1730,6 @@ function initApp() {
         }
     }
 
-    // 5. Konfirmasi Kirim
     function confirmSendImage() {
         if (!pendingImageBase64) return;
         const msgObj = {
@@ -1744,13 +1761,11 @@ function initApp() {
         const textInput = document.getElementById("text");
         if (!textInput || !currentChatId) return; 
         
-        // CEK 1: Jika ada gambar pending (Dari fitur Preview)
         if (pendingImageBase64) {
-            confirmSendImage(); // Kirim gambar
+            confirmSendImage();
             return;
         }
 
-        // CEK 2: Jika ada Voice Note
         const val = textInput.value.trim();
 
         if (typeof vnBlob !== 'undefined' && vnBlob) {
@@ -1776,7 +1791,6 @@ function initApp() {
             return;
         }
 
-        // LOGIKA PESAN TEKS (Edit / Baru)
         if (typeof isEditing !== 'undefined' && isEditing) {
             if (!val) return;
             db.ref(`chats/${currentChatId}/${selectedMsgId}`).update({
@@ -1957,7 +1971,7 @@ function initApp() {
         `;
 
         const menuWidth = 160;
-        const menuHeight = 50; 
+        const menuHeight = 50;
         let finalX = x;
         let finalY = y;
 
@@ -1974,6 +1988,7 @@ function initApp() {
         };
         setTimeout(() => document.addEventListener('click', closeMenu), 10);
     }
+
     function openMenu(x, y) {
         const menu = document.getElementById('contextMenu');
         const overlay = document.getElementById('menuOverlay');
@@ -1993,7 +2008,9 @@ function initApp() {
         if (menuOverlay) menuOverlay.style.display = 'none';
     }
 
-    if (contextMenu) { contextMenu.onclick = (e) => e.stopPropagation(); }
+    if (contextMenu) {
+        contextMenu.onclick = (e) => e.stopPropagation();
+    }
 
     function startTimer() {
         let sec = 0, min = 0;
@@ -2180,10 +2197,11 @@ function initApp() {
             img.onerror = null; 
         };
     }
+
     function closeLightbox() {
         document.getElementById('imageLightbox').style.display = 'none';
         document.getElementById('lightboxImg').src = '';
     }
-    </script>
+</script>
     </body>
 </html>
