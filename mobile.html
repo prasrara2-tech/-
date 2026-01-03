@@ -2068,28 +2068,50 @@
         }
     }
 
-    function pinChat(targetId) {
+      function pinChat(targetId) {
         const pinRef = db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`);
-        
-        pinRef.once('value', (snapshot) => {
-            if (snapshot.exists()) {
-                pinRef.remove();
-                showToast("Sematkan dilepas");
-                const list = document.getElementById("users");
-                if(list) list.innerHTML = "";
-                loadContacts(); 
-                
+
+        // Ambil data SEMUA pin untuk cek berapa jumlahnya saat ini
+        db.ref(`user_settings/${currentUser}/pinned_chats`).once("value", (allPinsSnap) => {
+            const allPins = allPinsSnap.val() || {};
+            const isCurrentlyPinned = !!allPins[targetId];
+
+            if (isCurrentlyPinned) {
+                // --- LEPAS SEMAT (UNPIN) ---
+                pinRef.remove().then(() => {
+                    showToast("Sematkan dilepas");
+                    // Refresh ulang list agar urutan normal kembali
+                    const list = document.getElementById("users");
+                    if(list) {
+                        list.innerHTML = "";
+                        loadContacts(); 
+                    }
+                });
+
             } else {
-                pinRef.set(true);
-                showToast("Chat disematkan ke atas");
-                const list = document.getElementById("users");
-                if(list) list.innerHTML = "";
-                loadContacts();
+                // --- COBA SEMAT (PIN) ---
+                const pinCount = Object.keys(allPins).length;
+
+                // CEK LIMIT MAXIMAL 3
+                if (pinCount >= 3) {
+                    showToast("❌ Maksimal 3 Chat disematkan!");
+                    return; // Batalkan aksi pin jika sudah penuh
+                }
+
+                // Jika aman (kurang dari 3), lakukan Pin
+                pinRef.set(true).then(() => {
+                    showToast("✅ Chat disematkan ke atas");
+                    
+                    // Refresh ulang list agar urutan terupdate (Pinned naik ke paling atas)
+                    const list = document.getElementById("users");
+                    if(list) {
+                        list.innerHTML = "";
+                        loadContacts(); 
+                    }
+                });
             }
-            closeContextMenu();
         });
     }
-
     function deleteChat(targetId) {
         if (confirm("Hapus percakapan ini dari daftar Anda?")) {
             db.ref(`user_chats/${currentUser}/${targetId}`).remove();
@@ -2424,6 +2446,7 @@
     </body>
 
     </html>
+
 
 
 
