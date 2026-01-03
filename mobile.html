@@ -1075,58 +1075,42 @@
         NOTIFICATION LOGIC (SPLIT CATEGORIES)
         ========================================= */
     
-      function showBrowserNotification(title, body, icon, tag) {
-        // --- URL GAMBAR BACKGROUND HITAM PEKAT ---
-        // Kita pakai URL gambar berukuran 1px untuk mengubah background notifikasi menjadi hitam
-        const darkBackgroundUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Nvidia.svg/1200px-Nvidia.svg.png"; // Placeholder URL
-        // Trik: Gunakan URL gambar hitam 1x1 px atau gunakan trik base64 (lihat bawah)
-        
+       function showBrowserNotification(title, body, icon, tag) {
         // --- GAMBAR HITAM 1x1 PIXEL (DATA URI) ---
-        // Ini adalah "hack" terbaik untuk membuat background notifikasi hitam tanpa perlu file gambar eksternal
+        // Hack agar background notifikasi jadi hitam (Dark Mode)
         const blackPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
-        // --- OPTIONS KONFIGURASI ---
+        // --- URL BADGE (IKON KECIL GOCHAT) ---
+        // Badge ini membuat notifikasi terlihat "resmi" dari aplikasi Anda
+        const badgeUrl = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+        // --- OPTIONS UNTUK FALLBACK (NATIVE NOTIF) ---
         const options = {
             body: body,
             icon: icon, // Ikon Avatar Pengirim
+            badge: badgeUrl, 
             
-            // 1. Badge: Ikon kecil di pojok kanan notifikasi (Bisa pakai logo GoChat)
-            badge: "https://cdn-icons-png.flaticon.com/512/149/149071.png", 
-            
-            // 2. Image: Gambar utama notifikasi. Kita pakai 'blackPixel' untuk menjadikan background gelap
-            // Beberapa browser (Chrome Desktop) mengabaikan background color, tapi merespon 'image'.
-            // Tapi jika kita ingin Tampilan Chat, kita bisa pakai gambar overlay gelap.
-            // Untuk Dark Mode "Murni", kita biarkan Image kosong/null agar icon yang dominan.
-            image: null, 
+            // --- PERBAIKAN 1: PAKAI IMAGE HITAM DI SINI JUGA ---
+            // Jangan null, pakai blackPixel agar jadi gelap
+            image: blackPixel, 
 
-            // 3. Vibrate: Getaran HP
             vibrate: [200, 100, 200],
-            
-            // 4. Tag: Kategori Notifikasi
             tag: tag,
-            
-            // 5. Teks Warna (Android 12+ Only)
-            // Membaca dark mode OS user, tapi jika Anda ingin memaksa putih/hitam di Android lama, 
-            // triknya biasanya melalui gambar background.
-            
-            // --- PENTING: BIARKAN BROWSER MENENTUKAN JUDUL APLIKASI ---
-            // Tampilan "GoChat Pro" di header notifikasi diatur oleh "Icon" atau "Badge".
-            // Title tetap nama pengirim agar user tahu siapa yang mengirim.
-            // Tapi jika Anda ingin Title = "GoChat", maka ganti parameter 'title' di bawah.
-            
-            requireInteraction: true // Pertahankan notifikasi sampai diklik
+            requireInteraction: true
         };
 
-        // --- 1. TRY SHOW VIA SERVICE WORKER (BEST PRACTICE) ---
+        // --- 1. TRY SHOW VIA SERVICE WORKER (BEST) ---
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            
+            // --- PERBAIKAN 2: KIRIM DATA BACKGROUND KE SERVICE WORKER ---
             const dataPayload = {
-                title: title, // Nama Pengirim / "GoChat Pro"
+                title: title, 
                 body: body,
                 icon: icon,
-                badge: "https://cdn-icons-png.flaticon.com/512/149/149071.png", // Ikon Kecil GoChat (Membuat notifikasi jelas bukan default Chrome)
+                badge: badgeUrl, // <--- KIRIM BADGE
+                image: blackPixel, // <--- KIRIM IMAGE HITAM (INI YANG PENTING!)
                 tag: tag,
-                // Kirim data image background ke SW (opsional jika SW Anda support custom bg)
-                data: { url: window.location.href } 
+                url: window.location.href
             };
 
             navigator.serviceWorker.controller.postMessage({
@@ -1134,24 +1118,14 @@
                 data: dataPayload
             });
         } 
-        // --- 2. FALLBACK: NATIVE NOTIFICATION (Jika SW gagal/offline) ---
+        // --- 2. FALLBACK: NATIVE NOTIFICATION ---
         else if (Notification.permission === "granted") {
-            
-            // --- TRIK GELAP MODE (DARK MODE HACK) ---
-            // Kita bisa pakai CSS khusus di 'data' untuk browser tertentu? Tidak support umum.
-            // Solusi terbaik: Tampilkan pesan judul "GoChat" + Isi Pesan.
-            
-            // Ubah Title agar selalu "GoChat Pro" jika Anda ingin header hitam (sebagian browser)
-            // const finalTitle = "GoChat Pro"; 
-            const finalTitle = title; // Jaga Nama Pengirim agar informatif
+            const finalTitle = title; 
 
             try {
                 const notif = new Notification(finalTitle, options);
-                
                 notif.onclick = () => {
                     window.focus();
-                    // Jika ingin buka chat spesifik, logic disini
-                    // window.location.href = "#chat-" + tag;
                     notif.close();
                 };
             } catch (e) {
@@ -2428,5 +2402,6 @@
     </body>
 
     </html>
+
 
 
